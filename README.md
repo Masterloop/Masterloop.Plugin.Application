@@ -1,0 +1,2 @@
+﻿# Masterloop.Plugin.Application
+
