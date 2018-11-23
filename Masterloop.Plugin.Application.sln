@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		LICENSE.txt = LICENSE.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "submodules", "submodules", "{50FD4255-A765-4553-8E4F-90A3A91EED0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Masterloop.Core.Types", "submodules\Masterloop.Core.Types\src\Masterloop.Core.Types\Masterloop.Core.Types.csproj", "{603AEB9C-5201-4EC2-8A57-05DC88210132}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,8 +25,13 @@ Global
 		{DEDBC216-7FCB-404C-8F21-9EC54BCFD823}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEDBC216-7FCB-404C-8F21-9EC54BCFD823}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEDBC216-7FCB-404C-8F21-9EC54BCFD823}.Release|Any CPU.Build.0 = Release|Any CPU
+		{603AEB9C-5201-4EC2-8A57-05DC88210132}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{603AEB9C-5201-4EC2-8A57-05DC88210132}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{603AEB9C-5201-4EC2-8A57-05DC88210132}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{603AEB9C-5201-4EC2-8A57-05DC88210132}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{DEDBC216-7FCB-404C-8F21-9EC54BCFD823} = {610369E7-0EA7-40AF-BFAD-700068BAF04F}
+		{603AEB9C-5201-4EC2-8A57-05DC88210132} = {50FD4255-A765-4553-8E4F-90A3A91EED0B}
 	EndGlobalSection
 EndGlobal
