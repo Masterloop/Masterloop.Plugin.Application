@@ -515,79 +515,97 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, Observation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, Observation> observationHandler, DataType dataType)
         {
             ObservationSubscription<Observation> observationSubscription = new ObservationSubscription<Observation>(MID, observationId, observationHandler);
             _observationSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, dataType);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, dataType);
+            }
         }
 
         /// <summary>
         /// Registers a new callback method that is called when a specified boolean observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, BooleanObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, BooleanObservation> observationHandler)
         {
             ObservationSubscription<BooleanObservation> observationSubscription = new ObservationSubscription<BooleanObservation>(MID, observationId, observationHandler);
             _booleanSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, DataType.Boolean);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Boolean);
+            }
         }
 
         /// <summary>
         /// Registers a new callback method that is called when a specified double observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, DoubleObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, DoubleObservation> observationHandler)
         {
             ObservationSubscription<DoubleObservation> observationSubscription = new ObservationSubscription<DoubleObservation>(MID, observationId, observationHandler);
             _doubleSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, DataType.Double);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Double);
+            }
         }
 
         /// <summary>
         /// Registers a new callback method that is called when a specified integer observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, IntegerObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, IntegerObservation> observationHandler)
         {
             ObservationSubscription<IntegerObservation> observationSubscription = new ObservationSubscription<IntegerObservation>(MID, observationId, observationHandler);
             _integerSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, DataType.Integer);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Integer);
+            }
         }
 
         /// <summary>
         /// Registers a new callback method that is called when a specified position observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, PositionObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, PositionObservation> observationHandler)
         {
             ObservationSubscription<PositionObservation> observationSubscription = new ObservationSubscription<PositionObservation>(MID, observationId, observationHandler);
             _positionSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, DataType.Position);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Position);
+            }
         }
 
         /// <summary>
         /// Registers a new callback method that is called when a specified string observation id is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, StringObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, StringObservation> observationHandler)
         {
             ObservationSubscription<StringObservation> observationSubscription = new ObservationSubscription<StringObservation>(MID, observationId, observationHandler);
             _stringSubscriptions.Add(observationSubscription);
-            _observationType.Add(observationId, DataType.String);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.String);
+            }
         }
 
         /// <summary>
