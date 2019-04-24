@@ -21,8 +21,6 @@ namespace Masterloop.Plugin.Application
         bool Connect();
         bool Connect(LiveAppRequest[] liveRequests);
         Task<bool> ConnectAsync(LiveAppRequest[] liveRequests);
-        bool Connect(PersistentLiveAppRequest persistentLiveRequest);
-        Task<bool> ConnectAsync(PersistentLiveAppRequest persistentLiveRequest);
         void Disconnect();
         bool IsConnected();
         bool PauseIncoming();

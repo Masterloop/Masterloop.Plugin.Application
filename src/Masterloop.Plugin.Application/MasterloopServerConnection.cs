@@ -53,6 +53,8 @@ namespace Masterloop.Plugin.Application
         private const string _addressToolsLiveConnectTemporaryIdentified = "/api/tools/liveconnect/{0}";
         private const string _addressToolsLiveConnectPersistent = "/api/tools/liveconnect/persistent";
         private const string _addressToolsLiveConnectPersistentIdentified = "/api/tools/liveconnect/persistent/{0}";
+        private const string _addressToolsLiveConnectPersistentAddDevice = "/api/tools/liveconnect/persistent/{0}/devices";
+        private const string _addressToolsLiveConnectPersistentRemoveDevice = "/api/tools/liveconnect/persistent/{0}/devices/{1}";
         private const string _addressDevicePulsePeriod = "/api/devices/{0}/pulse/{1}?fromTimestamp={2}&toTimestamp={3}";
         private const string _addressDevicePulsePeriodCurrent = "/api/devices/{0}/pulse/{1}/current";
         private const string _addressSnapshotCurrent = "/api/tools/snapshot/current";
@@ -799,35 +801,35 @@ namespace Masterloop.Plugin.Application
         }
         #endregion
 
-        #region LiveConnect
+        #region LiveTemporaryConnection
         /// <summary>
-        /// Request live connection information for multiple devices or templates. Subscriptions are started using the MasterloopDeviceConnection library.
+        /// Request live app connection information for multiple devices or templates. AMQP sessions are started using the MasterloopLiveConnection class.
         /// </summary>
-        /// <param name="liveRequests">Array of LiveAppRequest objects containing connection arguments.</param>
+        /// <param name="liveAppRequests">Array of LiveAppRequest objects containing connection arguments.</param>
         /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
-        public LiveConnectionDetails RequestLiveConnection(LiveAppRequest[] liveRequests)
+        public LiveConnectionDetails RequestLiveConnection(LiveAppRequest[] liveAppRequests)
         {
-            string body = JsonConvert.SerializeObject(liveRequests);
+            string body = JsonConvert.SerializeObject(liveAppRequests);
             return PostDeserialized<LiveConnectionDetails>(_addressToolsLiveConnect, body);
         }
 
         /// <summary>
-        /// Request live connection information for multiple devices or templates. Subscriptions are started using the MasterloopDeviceConnection library.
+        /// Request live app connection information for multiple devices or templates. AMQP sessions are started using the MasterloopLiveConnection class.
         /// </summary>
-        /// <param name="liveRequests">Array of LiveAppRequest objects containing connection arguments.</param>
+        /// <param name="liveAppRequests">Array of LiveAppRequest objects containing connection arguments.</param>
         /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
-        public async Task<LiveConnectionDetails> RequestLiveConnectionAsync(LiveAppRequest[] liveRequests)
+        public async Task<LiveConnectionDetails> RequestLiveConnectionAsync(LiveAppRequest[] liveAppRequests)
         {
-            string body = JsonConvert.SerializeObject(liveRequests);
+            string body = JsonConvert.SerializeObject(liveAppRequests);
             return await PostDeserializedAsync<LiveConnectionDetails>(_addressToolsLiveConnect, body);
         }
 
         /// <summary>
-        /// Delete persistent queue object.
+        /// Delete live temporary connection.
         /// </summary>
         /// <param name="temporaryKey">Temporary key (guid).</param>
         /// <returns>True if successful, False otherwise.</returns>
-        public bool DeleteTemporaryQueue(string temporaryKey)
+        public bool DeleteLiveTemporaryConnction(string temporaryKey)
         {
             string url = string.Format(_addressToolsLiveConnectTemporaryIdentified, temporaryKey);
             Tuple<bool, string> result = Delete(url);
@@ -835,45 +837,121 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Delete persistent queue object.
+        /// Delete live temporary connection.
         /// </summary>
         /// <param name="temporaryKey">Temporary key (guid).</param>
         /// <returns>True if successful, False otherwise.</returns>
-        public async Task<bool> DeleteTemporaryQueueAsync(string temporaryKey)
+        public async Task<bool> DeleteLiveTemporaryConnctionAsync(string temporaryKey)
         {
             string url = string.Format(_addressToolsLiveConnectTemporaryIdentified, temporaryKey);
             Tuple<bool, string> result = await DeleteAsync(url);
             return result.Item1;
         }
+        #endregion
 
+        #region LivePersistentSubscriptionConnection
         /// <summary>
-        /// Request persistent live connection information for multiple devices or templates. Subscriptions are started using the MasterloopDeviceConnection library.
+        /// Creates a live persistent subscription for a template or multiple devices.
         /// </summary>
-        /// <param name="persistentLiveRequest">PersistentLiveAppRequest object containing connection arguments.</param>
-        /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
-        public LiveConnectionDetails RequestLiveConnection(PersistentLiveAppRequest persistentLiveRequest)
+        /// <param name="livePersistentSubscriptionRequest">LivePersistentSubscriptionRequest object containing connection arguments.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool CreateLivePersistentSubscription(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest)
         {
-            string body = JsonConvert.SerializeObject(persistentLiveRequest);
-            return PostDeserialized<LiveConnectionDetails>(_addressToolsLiveConnectPersistent, body);
+            string body = JsonConvert.SerializeObject(livePersistentSubscriptionRequest);
+            return PostDeserialized<bool>(_addressToolsLiveConnectPersistent, body);
         }
 
         /// <summary>
-        /// Request live connection information for multiple devices or templates. Subscriptions are started using the MasterloopDeviceConnection library.
+        /// Create a live persistent subscription for a template or multiple devices.
         /// </summary>
-        /// <param name="persistentLiveRequest">PersistentLiveAppRequest object containing connection arguments.</param>
-        /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
-        public async Task<LiveConnectionDetails> RequestLiveConnectionAsync(PersistentLiveAppRequest persistentLiveRequest)
+        /// <param name="livePersistentSubscriptionRequest">LivePersistentSubscriptionRequest object containing connection arguments.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public async Task<bool> CreateLivePersistentSubscriptionAsync(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest)
         {
-            string body = JsonConvert.SerializeObject(persistentLiveRequest);
-            return await PostDeserializedAsync<LiveConnectionDetails>(_addressToolsLiveConnectPersistent, body);
+            string body = JsonConvert.SerializeObject(livePersistentSubscriptionRequest);
+            return await PostDeserializedAsync<bool>(_addressToolsLiveConnectPersistent, body);
         }
 
         /// <summary>
-        /// Delete persistent queue object.
+        /// Creates a live persistent subscription for a template or multiple devices. AMQP sessions are started using the MasterloopLiveConnection class.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
+        public LiveConnectionDetails GetLivePersistentSubscriptionConnection(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentIdentified, subscriptionKey);
+            return GetDeserialized<LiveConnectionDetails>(url);
+        }
+
+        /// <summary>
+        /// Creates a live persistent subscription for a template or multiple devices. AMQP sessions are started using the MasterloopLiveConnection class.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <returns>Connection details in the form of a LiveConnectionDetails structure.</returns>
+        public async Task<LiveConnectionDetails> GetLivePersistentSubscriptionConnectionAsync(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentIdentified, subscriptionKey);
+            return await GetDeserializedAsync<LiveConnectionDetails>(url);
+        }
+
+        /// <summary>
+        /// Adds a device to an existing live persistent subscription.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <param name="mid">Device identifier.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool AddLivePersistentSubscriptionDevice(string subscriptionKey, string mid)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
+            string body = JsonConvert.SerializeObject(mid);
+            return PostDeserialized<bool>(url, body);
+        }
+
+        /// <summary>
+        /// Adds a device to an existing live persistent subscription.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <param name="mid">Device identifier.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public async Task<bool> AddLivePersistentSubscriptionDeviceAsync(string subscriptionKey, string mid)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
+            string body = JsonConvert.SerializeObject(mid);
+            return await PostDeserializedAsync<bool>(url, body);
+        }
+
+        /// <summary>
+        /// Removes a device from an existing live persistent subscription.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <param name="mid">Device identifier.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool RemoveLivePersistentSubscriptionDevice(string subscriptionKey, string mid)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentRemoveDevice, subscriptionKey, mid);
+            Tuple<bool, string> result = Delete(url);
+            return result.Item1;
+        }
+
+        /// <summary>
+        /// Removes a device from an existing live persistent subscription.
+        /// </summary>
+        /// <param name="subscriptionKey">Subscription key to live persistent subscription.</param>
+        /// <param name="mid">Device identifier.</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public async Task<bool> RemoveLivePersistentSubscriptionDeviceAsync(string subscriptionKey, string mid)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentRemoveDevice, subscriptionKey, mid);
+            Tuple<bool, string> result = await DeleteAsync(url);
+            return result.Item1;
+        }
+
+        /// <summary>
+        /// Deletes an existing live persistent subscription.
         /// </summary>
         /// <param name="subscriptionKey">Subscription key.</param>
         /// <returns>True if successful, False otherwise.</returns>
-        public bool DeletePersistentQueue(string subscriptionKey)
+        public bool DeleteLivePersistentSubscription(string subscriptionKey)
         {
             string url = string.Format(_addressToolsLiveConnectPersistentIdentified, subscriptionKey);
             Tuple<bool, string> result = Delete(url);
@@ -881,11 +959,11 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Delete persistent queue object.
+        /// Deletes an existing live persistent subscription.
         /// </summary>
         /// <param name="subscriptionKey">Subscription key.</param>
         /// <returns>True if successful, False otherwise.</returns>
-        public async Task<bool> DeletePersistentQueueAsync(string subscriptionKey)
+        public async Task<bool> DeleteLivePersistentSubscriptionAsync(string subscriptionKey)
         {
             string url = string.Format(_addressToolsLiveConnectPersistentIdentified, subscriptionKey);
             Tuple<bool, string> result = await DeleteAsync(url);

@@ -81,15 +81,23 @@ namespace Masterloop.Plugin.Application
         ExpandedSettingsPackage GetSettings(string MID);
         ExpandedSettingsPackage GetSettingsAsync(string MID);
 
-        // Live Connect
-        LiveConnectionDetails RequestLiveConnection(LiveAppRequest[] liveRequests);
-        LiveConnectionDetails RequestLiveConnectionAsync(LiveAppRequest[] liveRequests);
-        LiveConnectionDetails RequestLiveConnection(PersistentLiveAppRequest persistentLiveRequest);
-        LiveConnectionDetails RequestLiveConnectionAsync(PersistentLiveAppRequest persistentLiveRequest);
-        bool DeleteTemporaryQueue(string temporaryKey);
-        bool DeleteTemporaryQueueAsync(string temporaryKey);
-        bool DeletePersistentQueue(string subscriptionKey);
-        bool DeletePersistentQueueAsync(string subscriptionKey);
+        // Live Temporary Connection
+        LiveConnectionDetails RequestLiveConnection(LiveAppRequest[] liveAppRequests);
+        LiveConnectionDetails RequestLiveConnectionAsync(LiveAppRequest[] liveAppRequests);
+        bool DeleteLiveTemporaryConnction(string temporaryKey);
+        bool DeleteLiveTemporaryConnctionAsync(string temporaryKey);
+
+        // Live Persistent Subscription Connection
+        bool CreateLivePersistentSubscription(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest);
+        bool CreateLivePersistentSubscriptionAsync(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest);
+        LiveConnectionDetails GetLivePersistentSubscriptionConnection(string subscriptionKey);
+        LiveConnectionDetails GetLivePersistentSubscriptionConnectionAsync(string subscriptionKey);
+        bool AddLivePersistentSubscriptionDevice(string subscriptionKey, string mid);
+        bool AddLivePersistentSubscriptionDeviceAsync(string subscriptionKey, string mid);
+        bool RemoveLivePersistentSubscriptionDevice(string subscriptionKey, string mid);
+        bool RemoveLivePersistentSubscriptionDeviceAsync(string subscriptionKey, string mid);
+        bool DeleteLivePersistentSubscription(string subscriptionKey);
+        bool DeleteLivePersistentSubscriptionAsync(string subscriptionKey);
 
         // Pulse
         PulsePeriod[] GetPulsePeriod(string MID, int pulseId, DateTime from, DateTime to);

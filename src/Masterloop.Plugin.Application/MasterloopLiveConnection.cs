@@ -202,28 +202,6 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Connects to specified devices or templates with persistent queue enabled. Can only be used if object has been constructed using MCS credentials due to built-in re-connect feature.
-        /// </summary>
-        /// <param name="persistentLiveRequest">Persistent live request structure with subscription key and array of LiveAppRequests objects.</param>
-        /// <returns>True if connection was successful, False otherwise. Note: If the initial call to Connect fails, re-connection will not be started.</returns>
-        public bool Connect(PersistentLiveAppRequest persistentLiveRequest)
-        {
-            if (Connect())  // Recycle existing connection if possible
-            {
-                return true;
-            }
-            else
-            {
-                // Recycling failed, request a new live connection
-                _liveRequests = new List<LiveAppRequest>(persistentLiveRequest.Requests);
-                _apiServerConnection.Timeout = Timeout;
-                _liveConnectionDetails = _apiServerConnection.RequestLiveConnection(persistentLiveRequest);
-
-                return OpenConnection();
-            }
-        }
-
-        /// <summary>
         /// Connects to specified devices or templates. Can only be used if object has been constructed using MCS credentials due to built-in re-connect feature.
         /// </summary>
         /// <param name="liveRequests">Array of LiveAppRequest objects containing device or template connection arguments.</param>
@@ -240,28 +218,6 @@ namespace Masterloop.Plugin.Application
                 _liveRequests = new List<LiveAppRequest>(liveRequests);
                 _apiServerConnection.Timeout = Timeout;
                 _liveConnectionDetails = await _apiServerConnection.RequestLiveConnectionAsync(_liveRequests.ToArray());
-
-                return OpenConnection();
-            }
-        }
-
-        /// <summary>
-        /// Connects to specified devices or templates with persistent queue enabled. Can only be used if object has been constructed using MCS credentials due to built-in re-connect feature.
-        /// </summary>
-        /// <param name="persistentLiveRequest">Persistent live request structure with subscription key and array of LiveAppRequests objects.</param>
-        /// <returns>True if connection was successful, False otherwise. Note: If the initial call to Connect fails, re-connection will not be started.</returns>
-        public async Task<bool> ConnectAsync(PersistentLiveAppRequest persistentLiveRequest)
-        {
-            if (Connect())  // Recycle existing connection if possible
-            {
-                return true;
-            }
-            else
-            {
-                // Recycling failed, request a new live connection
-                _liveRequests = new List<LiveAppRequest>(persistentLiveRequest.Requests);
-                _apiServerConnection.Timeout = Timeout;
-                _liveConnectionDetails = await _apiServerConnection.RequestLiveConnectionAsync(persistentLiveRequest);
 
                 return OpenConnection();
             }
