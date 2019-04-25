@@ -190,7 +190,7 @@ namespace Masterloop.Plugin.Application
             {
                 return true;
             }
-            else
+            else if (_apiServerConnection != null)
             {
                 // Recycling failed, request a new live connection
                 _liveRequests = new List<LiveAppRequest>(liveRequests);
@@ -198,6 +198,10 @@ namespace Masterloop.Plugin.Application
                 _liveConnectionDetails = _apiServerConnection.RequestLiveConnection(_liveRequests.ToArray());
 
                 return OpenConnection();
+            }
+            else
+            {
+                return false;
             }
         }
 
@@ -212,7 +216,7 @@ namespace Masterloop.Plugin.Application
             {
                 return true;
             }
-            else
+            else if (_apiServerConnection != null)
             {
                 // Recycling failed, request a new live connection
                 _liveRequests = new List<LiveAppRequest>(liveRequests);
@@ -220,6 +224,10 @@ namespace Masterloop.Plugin.Application
                 _liveConnectionDetails = await _apiServerConnection.RequestLiveConnectionAsync(_liveRequests.ToArray());
 
                 return OpenConnection();
+            }
+            else
+            {
+                return false;
             }
         }
 

@@ -16,7 +16,7 @@ using System.Net;
 
 namespace Masterloop.Plugin.Application
 {
-    public class MasterloopServerConnection : IDisposable
+    public class MasterloopServerConnection : IMasterloopServerConnection
     {
         #region PrivateMembers
         private readonly string _baseAddress;
@@ -164,16 +164,6 @@ namespace Masterloop.Plugin.Application
             {
                 return false;
             }
-        }
-
-        bool UpdateTemplate(DeviceTemplate template)
-        {
-            throw new NotImplementedException();
-        }
-
-        bool DeleteTemplate(string TID)
-        {
-            throw new NotImplementedException();
         }
         #endregion
 
@@ -858,7 +848,8 @@ namespace Masterloop.Plugin.Application
         public bool CreateLivePersistentSubscription(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest)
         {
             string body = JsonConvert.SerializeObject(livePersistentSubscriptionRequest);
-            return PostDeserialized<bool>(_addressToolsLiveConnectPersistent, body);
+            Tuple<bool, string> result = Post(_addressToolsLiveConnectPersistent, body);
+            return result.Item1;
         }
 
         /// <summary>
@@ -869,7 +860,8 @@ namespace Masterloop.Plugin.Application
         public async Task<bool> CreateLivePersistentSubscriptionAsync(LivePersistentSubscriptionRequest livePersistentSubscriptionRequest)
         {
             string body = JsonConvert.SerializeObject(livePersistentSubscriptionRequest);
-            return await PostDeserializedAsync<bool>(_addressToolsLiveConnectPersistent, body);
+            Tuple<bool, string> result = await PostAsync(_addressToolsLiveConnectPersistent, body);
+            return result.Item1;
         }
 
         /// <summary>
@@ -904,7 +896,8 @@ namespace Masterloop.Plugin.Application
         {
             string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
             string body = JsonConvert.SerializeObject(mid);
-            return PostDeserialized<bool>(url, body);
+            Tuple<bool, string> result = Post(url, body);
+            return result.Item1;
         }
 
         /// <summary>
@@ -917,7 +910,8 @@ namespace Masterloop.Plugin.Application
         {
             string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
             string body = JsonConvert.SerializeObject(mid);
-            return await PostDeserializedAsync<bool>(url, body);
+            Tuple<bool, string> result = await PostAsync(url, body);
+            return result.Item1;
         }
 
         /// <summary>
