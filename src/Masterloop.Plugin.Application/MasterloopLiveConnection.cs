@@ -355,28 +355,29 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if message was received, false otherwise.</returns>
         public bool Fetch()
         {
-            lock (_modelLock)
+            try
             {
-                try
+                while (true)
                 {
-                    while (true)
+                    BasicGetResult result;
+                    lock (_modelLock)
                     {
-                        BasicGetResult result = _model.BasicGet(_liveConnectionDetails.QueueName, false);
-                        if (result == null)
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            return Dispatch(result.RoutingKey, GetMessageHeader(result), result.Body, result.DeliveryTag);
-                        }
+                        result = _model.BasicGet(_liveConnectionDetails.QueueName, false);
+                    }
+                    if (result == null)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return Dispatch(result.RoutingKey, GetMessageHeader(result), result.Body, result.DeliveryTag);
                     }
                 }
-                catch (Exception e)
-                {
-                    LastErrorMessage = e.Message;
-                    return false;
-                }
+            }
+            catch (Exception e)
+            {
+                LastErrorMessage = e.Message;
+                return false;
             }
         }
         #endregion
