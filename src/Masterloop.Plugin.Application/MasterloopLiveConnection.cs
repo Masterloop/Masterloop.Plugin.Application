@@ -33,7 +33,7 @@ namespace Masterloop.Plugin.Application
         private List<CommandSubscription<Command>> _commandSubscriptions;
         private List<CommandSubscription<CommandResponse>> _commandResponseSubscriptions;
         private List<PulseSubscription> _pulseSubscriptions;
-        private ushort _heartbeatInterval;
+        private ushort _heartbeatInterval = 60;
         private bool _disposed;
         private List<LiveAppRequest> _liveRequests;
         private readonly object _modelLock;
@@ -44,7 +44,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// True ignores any SSL certificate errors, False does not ignore any SSL certificate errors.
         /// </summary>
-        public bool IgnoreSslCertificateErrors { get; set; }
+        public bool IgnoreSslCertificateErrors { get; set; } = false;
 
         /// <summary>
         /// Specifies the requested heartbeat interval in seconds. Must be within the range of [60, 3600] seconds. Use 0 to disable heartbeats.
@@ -72,7 +72,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Network timeout in seconds.
         /// </summary>
-        public int Timeout { get; set; }
+        public int Timeout { get; set; } = 30;
 
         /// <summary>
         /// Last error message as text string in english.
@@ -111,9 +111,14 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Set to True for automatic callbacks to be called, or False to control callback using Fetch method.
+        /// Set to True for automatic callbacks to be called (default), or False to control callback using Fetch method.
         /// </summary>
-        public bool UseAutomaticCallbacks { get; set; }
+        public bool UseAutomaticCallbacks { get; set; } = true;
+
+        /// <summary>
+        /// Set to True to quickly acknowledge all incoming messages (default), or False for acknowledge only messages with registered handlers.
+        /// </summary>
+        public bool UseAutomaticAcknowledgement { get; set; } = true;
         #endregion
 
         #region Construction
@@ -362,7 +367,7 @@ namespace Masterloop.Plugin.Application
                     BasicGetResult result;
                     lock (_modelLock)
                     {
-                        result = _model.BasicGet(_liveConnectionDetails.QueueName, false);
+                        result = _model.BasicGet(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement);
                     }
                     if (result == null)
                     {
@@ -699,10 +704,6 @@ namespace Masterloop.Plugin.Application
             _commandSubscriptions = new List<CommandSubscription<Command>>();
             _commandResponseSubscriptions = new List<CommandSubscription<CommandResponse>>();
             _pulseSubscriptions = new List<PulseSubscription>();
-            IgnoreSslCertificateErrors = false;
-            HeartbeatInterval = 60;
-            Timeout = 30;
-            UseAutomaticCallbacks = true;
         }
 
         private void RemoveHandler<T>(List<ObservationSubscription<T>> table, string MID, int observationId)
@@ -946,9 +947,12 @@ namespace Masterloop.Plugin.Application
                         string json = Encoding.UTF8.GetString(body);
                         if (DispatchObservation(MID, observationId, json, _observationType[observationId]))
                         {
-                            lock (_modelLock)
+                            if (!UseAutomaticAcknowledgement)
                             {
-                                _model.BasicAck(deliveryTag, false);
+                                lock (_modelLock)
+                                {
+                                    _model.BasicAck(deliveryTag, false);
+                                }
                             }
                             return true;
                         }
@@ -963,9 +967,12 @@ namespace Masterloop.Plugin.Application
                         DateTime timestamp = MessageRoutingKey.ParseCommandTimestamp(routingKey);
                         if (DispatchCommand(MID, commandId, json, timestamp))
                         {
-                            lock (_modelLock)
+                            if (!UseAutomaticAcknowledgement)
                             {
-                                _model.BasicAck(deliveryTag, false);
+                                lock (_modelLock)
+                                {
+                                    _model.BasicAck(deliveryTag, false);
+                                }
                             }
                             return true;
                         }
@@ -980,9 +987,12 @@ namespace Masterloop.Plugin.Application
                         DateTime timestamp = MessageRoutingKey.ParseCommandTimestamp(routingKey);
                         if (DispatchCommandResponse(MID, commandId, json, timestamp))
                         {
-                            lock (_modelLock)
+                            if (!UseAutomaticAcknowledgement)
                             {
-                                _model.BasicAck(deliveryTag, false);
+                                lock (_modelLock)
+                                {
+                                    _model.BasicAck(deliveryTag, false);
+                                }
                             }
                             return true;
                         }
@@ -995,9 +1005,12 @@ namespace Masterloop.Plugin.Application
                     {
                         if (DispatchPulse(MID, 0, json))
                         {
-                            lock (_modelLock)
+                            if (!UseAutomaticAcknowledgement)
                             {
-                                _model.BasicAck(deliveryTag, false);
+                                lock (_modelLock)
+                                {
+                                    _model.BasicAck(deliveryTag, false);
+                                }
                             }
                             return true;
                         }
@@ -1007,18 +1020,24 @@ namespace Masterloop.Plugin.Application
                         int pulseId = MessageRoutingKey.ParsePulseId(routingKey);
                         if (DispatchPulse(MID, pulseId, json))
                         {
-                            lock (_modelLock)
+                            if (!UseAutomaticAcknowledgement)
                             {
-                                _model.BasicAck(deliveryTag, false);
+                                lock (_modelLock)
+                                {
+                                    _model.BasicAck(deliveryTag, false);
+                                }
                             }
                             return true;
                         }
                     }
                 }
             }
-            lock (_modelLock)
+            if (!UseAutomaticAcknowledgement)
             {
-                _model.BasicNack(deliveryTag, false, false);
+                lock (_modelLock)
+                {
+                    _model.BasicNack(deliveryTag, false, false);
+                }
             }
             return false;
         }
@@ -1036,7 +1055,7 @@ namespace Masterloop.Plugin.Application
                         {
                             _consumer = new EventingBasicConsumer(_model);
                             _consumer.Received += ConsumerReceived;
-                            _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, false, _consumer);
+                            _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
                         }
                     }
                     return true;
