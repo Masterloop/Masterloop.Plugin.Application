@@ -16,13 +16,13 @@
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <FileVersion>5.3.0.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>5.5.3</PackageVersion>
+    <PackageVersion>5.5.4</PackageVersion>
     <Owners>jhskailand</Owners>
     <Summary>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <ReleaseVersion>5.5.3</ReleaseVersion>
     <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
+    <ReleaseVersion>5.5.4</ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType></DebugType>

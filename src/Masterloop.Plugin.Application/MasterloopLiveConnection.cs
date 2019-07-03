@@ -256,7 +256,11 @@ namespace Masterloop.Plugin.Application
                 {
                     if (_model.IsOpen)
                     {
-                        _model.Close(200, "Goodbye");
+                        try
+                        {
+                            _model.Close(200, "Goodbye");
+                        }
+                        catch (Exception) { }
                     }
                     _model.Dispose();
                     _model = null;
@@ -269,7 +273,11 @@ namespace Masterloop.Plugin.Application
                 {
                     if (_connection.IsOpen)
                     {
-                        _connection.Close();
+                        try
+                        {
+                            _connection.Close();
+                        }
+                        catch (Exception) { }
                     }
                     _connection.Dispose();
                     _connection = null;
@@ -1055,7 +1063,14 @@ namespace Masterloop.Plugin.Application
                         {
                             _consumer = new EventingBasicConsumer(_model);
                             _consumer.Received += ConsumerReceived;
-                            _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
+                            try
+                            {
+                                _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
+                            }
+                            catch (Exception)
+                            {
+                                return false;
+                            }
                         }
                     }
                     return true;
