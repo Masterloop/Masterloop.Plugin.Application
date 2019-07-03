@@ -10,7 +10,7 @@
     <Authors>Masterloop</Authors>
     <PackageTags>IoT Masterloop Application Plugin</PackageTags>
     <Copyright>Copyright (c) 2013-2019 Masterloop</Copyright>
-    <PackageReleaseNotes>MasterloopLiveConnection bugfix in Fetch method</PackageReleaseNotes>
+    <PackageReleaseNotes>MasterloopLiveConnection improved robustness in reconnect</PackageReleaseNotes>
     <Description>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
