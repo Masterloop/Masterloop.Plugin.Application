@@ -38,6 +38,7 @@ namespace Masterloop.Plugin.Application
         private List<LiveAppRequest> _liveRequests;
         private readonly object _modelLock;
         private Dictionary<int, DataType> _observationType;
+        private Queue<BasicDeliverEventArgs> _queue;
         #endregion // PrivateMembers
 
         #region Properties
@@ -135,6 +136,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
+            _queue = new Queue<BasicDeliverEventArgs>();
         }
 
         /// <summary>
@@ -147,6 +149,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
+            _queue = new Queue<BasicDeliverEventArgs>();
         }
 
         /// <summary>
@@ -316,7 +319,7 @@ namespace Masterloop.Plugin.Application
         public bool PauseIncoming()
         {
             bool success = false;
-            if (UseAutomaticCallbacks && _consumer != null && _consumerTag != string.Empty)
+            if (_consumer != null && _consumerTag != string.Empty)
             {
                 lock (_model)
                 {
@@ -343,7 +346,7 @@ namespace Masterloop.Plugin.Application
         public bool ResumeIncoming()
         {
             bool success = false;
-            if (UseAutomaticCallbacks && _consumer != null && _consumerTag != string.Empty)
+            if (_consumer != null && _consumerTag != string.Empty)
             {
                 lock (_model)
                 {
@@ -368,28 +371,16 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if message was received, false otherwise.</returns>
         public bool Fetch()
         {
-            try
+            if (_queue.Count > 0)
             {
-                while (true)
+                lock (_queue)
                 {
-                    BasicGetResult result;
-                    lock (_modelLock)
-                    {
-                        result = _model.BasicGet(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement);
-                    }
-                    if (result == null)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return Dispatch(result.RoutingKey, GetMessageHeader(result), result.Body, result.DeliveryTag);
-                    }
+                    BasicDeliverEventArgs args = _queue.Dequeue();
+                    return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
                 }
             }
-            catch (Exception e)
+            else
             {
-                LastErrorMessage = e.Message;
                 return false;
             }
         }
@@ -938,7 +929,17 @@ namespace Masterloop.Plugin.Application
 
         private void ConsumerReceived(object sender, BasicDeliverEventArgs args)
         {
-            Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
+            if (UseAutomaticCallbacks)
+            {
+                Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
+            }
+            else
+            {
+                lock (_queue)
+                {
+                    _queue.Enqueue(args);
+                }
+            }
         }
 
         private bool Dispatch(string routingKey, IDictionary<string, object> headers, byte[] body, ulong deliveryTag)
@@ -1057,20 +1058,17 @@ namespace Masterloop.Plugin.Application
                 if (Open())
                 {
                     // Enable automatic callback handler if specified.
-                    if (UseAutomaticCallbacks)
+                    lock (_modelLock)
                     {
-                        lock (_modelLock)
+                        _consumer = new EventingBasicConsumer(_model);
+                        _consumer.Received += ConsumerReceived;
+                        try
                         {
-                            _consumer = new EventingBasicConsumer(_model);
-                            _consumer.Received += ConsumerReceived;
-                            try
-                            {
-                                _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
+                            _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
+                        }
+                        catch (Exception)
+                        {
+                            return false;
                         }
                     }
                     return true;

@@ -17,6 +17,7 @@ namespace Masterloop.Plugin.Application
         LiveConnectionDetails ConnectionDetails { get; }
         string ConnectionKey { get; }
         bool UseAutomaticCallbacks { get; set; }
+        bool UseAutomaticAcknowledgement { get; set; }
 
         bool Connect();
         bool Connect(LiveAppRequest[] liveRequests);
