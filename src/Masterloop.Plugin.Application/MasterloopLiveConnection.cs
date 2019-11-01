@@ -424,7 +424,59 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Sends an application pulse to the server. Device identifies application by PulseId specified in the request array in Connect().
+        /// Sends an application pulse to the server for a specified device.
+        /// </summary>
+        /// <param name="MID">Device identifier.</param>
+        /// <param name="pulseId">Application pulse identifier.</param>
+        /// <param name="timestamp">Timestamp in UTC indicating the time of the pulse. null for current time.</param>
+        /// <param name="expiryMilliseconds">Expiry time of pulse signal in milli seconds. Use 0 to never expire. Default 300000 (5 minutes).</param>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool SendPulse(string MID, int pulseId, DateTime? timestamp, int expiryMilliseconds = 300000)
+        {
+            if (IsConnected())
+            {
+                if (!timestamp.HasValue)
+                {
+                    timestamp = DateTime.UtcNow;
+                }
+
+                Pulse pulse = new Pulse()
+                {
+                    Timestamp = timestamp.Value,
+                    MID = MID,
+                    PulseId = pulseId
+                };
+
+                IBasicProperties properties = GetMessageProperties(MessageDataType.Pulse, 1);
+                if (expiryMilliseconds > 0)
+                {
+                    properties.Expiration = expiryMilliseconds.ToString("F0");
+                }
+                string routingKey = MessageRoutingKey.GeneratePulseRoutingKey(pulse.MID, pulse.PulseId);
+                string json = JsonConvert.SerializeObject(pulse);
+                byte[] body = Encoding.UTF8.GetBytes(json);
+                try
+                {
+                    lock (_modelLock)
+                    {
+                        _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, true, properties, body);
+                    }
+                }
+                catch (Exception e)
+                {
+                    LastErrorMessage = e.Message;
+                    return false;
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sends an application pulse to the server for multiple devices. Device identifies application by PulseId specified in the request array in Connect().
         /// </summary>
         /// <param name="timestamp">Timestamp in UTC indicating the time of the pulse. null for current time.</param>
         /// <param name="expiryMilliseconds">Expiry time of pulse signal in milli seconds. Use 0 to never expire. Default 300000 (5 minutes).</param>
