@@ -395,7 +395,7 @@ namespace Masterloop.Plugin.Application
         {
             if (IsConnected())
             {
-                IBasicProperties properties = GetMessageProperties(MessageDataType.Command, 2);
+                IBasicProperties properties = GetMessageProperties(2);
                 if (command.ExpiresAt.HasValue)
                 {
                     TimeSpan ts = command.ExpiresAt.Value - DateTime.UtcNow;
@@ -447,7 +447,7 @@ namespace Masterloop.Plugin.Application
                     PulseId = pulseId
                 };
 
-                IBasicProperties properties = GetMessageProperties(MessageDataType.Pulse, 1);
+                IBasicProperties properties = GetMessageProperties(1);
                 if (expiryMilliseconds > 0)
                 {
                     properties.Expiration = expiryMilliseconds.ToString("F0");
@@ -459,7 +459,7 @@ namespace Masterloop.Plugin.Application
                 {
                     lock (_modelLock)
                     {
-                        _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, true, properties, body);
+                        _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, false, properties, body);
                     }
                 }
                 catch (Exception e)
@@ -476,61 +476,27 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Sends an application pulse to the server for multiple devices. Device identifies application by PulseId specified in the request array in Connect().
+        /// Sends an application pulse to the server for all explicitly connected devices. Device identifies application by PulseId specified in the request array in Connect().
         /// </summary>
         /// <param name="timestamp">Timestamp in UTC indicating the time of the pulse. null for current time.</param>
         /// <param name="expiryMilliseconds">Expiry time of pulse signal in milli seconds. Use 0 to never expire. Default 300000 (5 minutes).</param>
         /// <returns>True if successful, False otherwise.</returns>
         public bool SendPulse(DateTime? timestamp, int expiryMilliseconds = 300000)
         {
-            if (IsConnected())
+            foreach (LiveAppRequest request in _liveRequests)
             {
-                if (!timestamp.HasValue)
+                if (!request.PulseId.HasValue)
                 {
-                    timestamp = DateTime.UtcNow;
+                    throw new ArgumentNullException("LiveAppRequest structure to Connect() must specify a valid PulseId value.");
                 }
 
-                foreach (LiveAppRequest request in _liveRequests)
+                if (!SendPulse(request.MID, request.PulseId.Value, timestamp, expiryMilliseconds))
                 {
-                    if (!request.PulseId.HasValue)
-                    {
-                        throw new ArgumentNullException("LiveAppRequest structure to Connect() must specify a valid PulseId value.");
-                    }
-
-                    Pulse pulse = new Pulse()
-                    {
-                        Timestamp = timestamp.Value,
-                        MID = request.MID,
-                        PulseId = request.PulseId.Value
-                    };
-
-                    IBasicProperties properties = GetMessageProperties(MessageDataType.Pulse, 1);
-                    if (expiryMilliseconds > 0)
-                    {
-                        properties.Expiration = expiryMilliseconds.ToString("F0");
-                    }
-                    string routingKey = MessageRoutingKey.GeneratePulseRoutingKey(pulse.MID, pulse.PulseId);
-                    string json = JsonConvert.SerializeObject(pulse);
-                    byte[] body = Encoding.UTF8.GetBytes(json);
-                    try
-                    {
-                        lock (_modelLock)
-                        {
-                            _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, true, properties, body);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        LastErrorMessage = e.Message;
-                        return false;
-                    }
+                    return false;
                 }
-                return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return true;
         }
 
         /// <summary>
@@ -895,29 +861,18 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private IBasicProperties GetMessageProperties(string dataType, byte deliveryMode)
+        private IBasicProperties GetMessageProperties(byte deliveryMode)
         {
             lock (_modelLock)
             {
                 IBasicProperties properties = _model.CreateBasicProperties();
                 properties.ContentType = "application/json";
                 properties.DeliveryMode = deliveryMode;
-                properties.Headers = new Dictionary<string, object>
-                {
-                    {"type", dataType}
-                };
                 return properties;
             }
         }
 
         private IDictionary<string, object> GetMessageHeader(BasicDeliverEventArgs args)
-        {
-            if (args == null) return new Dictionary<string, object>();
-            if (args.BasicProperties == null) return new Dictionary<string, object>();
-            return args.BasicProperties.Headers;
-        }
-
-        private IDictionary<string, object> GetMessageHeader(BasicGetResult args)
         {
             if (args == null) return new Dictionary<string, object>();
             if (args.BasicProperties == null) return new Dictionary<string, object>();
