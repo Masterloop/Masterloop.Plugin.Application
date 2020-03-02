@@ -8,6 +8,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Security;
 using System.Text;
 using System.Threading.Tasks;
@@ -608,7 +609,11 @@ namespace Masterloop.Plugin.Application
             RemoveHandler<IntegerObservation>(_integerSubscriptions, MID, observationId);
             RemoveHandler<PositionObservation>(_positionSubscriptions, MID, observationId);
             RemoveHandler<StringObservation>(_stringSubscriptions, MID, observationId);
-            _observationType.Remove(observationId);
+
+            if (ActiveObservationHandlers(observationId) == 0)
+            {
+                _observationType.Remove(observationId);
+            }
         }
 
         /// <summary>
@@ -1089,6 +1094,19 @@ namespace Masterloop.Plugin.Application
             {
                 return false;
             }
+        }
+
+        private int ActiveObservationHandlers(int observationId)
+        {
+            int handlerCount = 0;
+            handlerCount += _observationSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _booleanSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _doubleSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _integerSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _positionSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _stringSubscriptions.Count(s => observationId == s.ObservationId);
+
+            return handlerCount;
         }
         #endregion //InternalMethods
     }
