@@ -396,7 +396,7 @@ namespace Masterloop.Plugin.Application
         {
             if (IsConnected())
             {
-                IBasicProperties properties = GetMessageProperties(2);
+                IBasicProperties properties = GetMessageProperties(1);
                 if (command.ExpiresAt.HasValue)
                 {
                     TimeSpan ts = command.ExpiresAt.Value - DateTime.UtcNow;
@@ -448,7 +448,7 @@ namespace Masterloop.Plugin.Application
                     PulseId = pulseId
                 };
 
-                IBasicProperties properties = GetMessageProperties(1);
+                IBasicProperties properties = GetMessageProperties(2);
                 if (expiryMilliseconds > 0)
                 {
                     properties.Expiration = expiryMilliseconds.ToString("F0");
