@@ -1,0 +1,3 @@
+[submodule "submodules/Masterloop.Core.Types"]
+	path = submodules/Masterloop.Core.Types
+	url = https://github.com/Masterloop/Masterloop.Core.Types.git
