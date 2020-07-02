@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -44,7 +45,7 @@ namespace Masterloop.Plugin.Application
         private List<LiveAppRequest> _liveRequests;
         private readonly object _modelLock;
         private Dictionary<int, DataType> _observationType;
-        private Queue<BasicDeliverEventArgs> _queue;
+        private ConcurrentQueue<BasicDeliverEventArgs> _queue;
         private string _localAddress;
         #endregion // PrivateMembers
 
@@ -166,7 +167,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
-            _queue = new Queue<BasicDeliverEventArgs>();
+            _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
         }
 
@@ -180,7 +181,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
-            _queue = new Queue<BasicDeliverEventArgs>();
+            _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
         }
 
@@ -403,18 +404,20 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if message was received, false otherwise.</returns>
         public bool Fetch()
         {
-            if (_queue.Count > 0)
-            {
-                lock (_queue)
-                {
-                    BasicDeliverEventArgs args = _queue.Dequeue();
-                    return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
-                }
-            }
-            else
+            // Queue is empty, nothing to fetch
+            if (_queue.IsEmpty)
             {
                 return false;
             }
+
+            // Use concurrent dequeueing, return dispatch state if successfull
+            if (_queue.TryDequeue(out BasicDeliverEventArgs args))
+            {
+                return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
+            }
+
+            // Failed to dequeue, probably concurrent dequeue and empty queue, so return false
+            return false;
         }
         #endregion
 
@@ -1073,10 +1076,7 @@ namespace Masterloop.Plugin.Application
             }
             else
             {
-                lock (_queue)
-                {
-                    _queue.Enqueue(args);
-                }
+                _queue.Enqueue(args);
             }
         }
 
