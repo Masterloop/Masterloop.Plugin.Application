@@ -29,11 +29,13 @@ namespace Masterloop.Plugin.Application
         private EventingBasicConsumer _consumer;
         private string _consumerTag;
         private List<ObservationSubscription<Observation>> _observationSubscriptions;
+        private List<ObservationSubscription<byte[]>> _binarySubscriptions;
         private List<ObservationSubscription<BooleanObservation>> _booleanSubscriptions;
         private List<ObservationSubscription<DoubleObservation>> _doubleSubscriptions;
         private List<ObservationSubscription<IntegerObservation>> _integerSubscriptions;
         private List<ObservationSubscription<PositionObservation>> _positionSubscriptions;
         private List<ObservationSubscription<StringObservation>> _stringSubscriptions;
+        private List<ObservationSubscription<StatisticsObservation>> _statisticsSubscriptions;
         private List<CommandSubscription<Command>> _commandSubscriptions;
         private List<CommandSubscription<CommandResponse>> _commandResponseSubscriptions;
         private List<PulseSubscription> _pulseSubscriptions;
@@ -534,23 +536,46 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified observation id is received.
+        /// Registers a new callback method that is called when a specified observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, Observation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, Observation> observationHandler, DataType dataType)
         {
-            ObservationSubscription<Observation> observationSubscription = new ObservationSubscription<Observation>(MID, observationId, observationHandler);
-            _observationSubscriptions.Add(observationSubscription);
-            if (!_observationType.ContainsKey(observationId))
+            if (dataType != DataType.Binary)
             {
-                _observationType.Add(observationId, dataType);
+                ObservationSubscription<Observation> observationSubscription = new ObservationSubscription<Observation>(MID, observationId, observationHandler);
+                _observationSubscriptions.Add(observationSubscription);
+                if (!_observationType.ContainsKey(observationId))
+                {
+                    _observationType.Add(observationId, dataType);
+                }
+            }
+            else
+            {
+                throw new ArgumentException($"RegisterObservationHandler does not support data type {dataType}.");
             }
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified boolean observation id is received.
+        /// Registers a new callback method that is called when a specified binary observation blob is received.
+        /// </summary>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="observationId">Observation identifier.</param>
+        /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, byte[] o) { ... }"</param>
+        public void RegisterObservationHandler(string MID, int observationId, Action<string, int, byte[]> observationHandler)
+        {
+            ObservationSubscription<byte[]> observationSubscription = new ObservationSubscription<byte[]>(MID, observationId, observationHandler);
+            _binarySubscriptions.Add(observationSubscription);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Binary);
+            }
+        }
+
+        /// <summary>
+        /// Registers a new callback method that is called when a specified boolean observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
@@ -566,7 +591,7 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified double observation id is received.
+        /// Registers a new callback method that is called when a specified double observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
@@ -582,7 +607,7 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified integer observation id is received.
+        /// Registers a new callback method that is called when a specified integer observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
@@ -598,7 +623,7 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified position observation id is received.
+        /// Registers a new callback method that is called when a specified position observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
@@ -614,7 +639,7 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Registers a new callback method that is called when a specified string observation id is received.
+        /// Registers a new callback method that is called when a specified string observation is received.
         /// </summary>
         /// <param name="MID">Device identifier, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
@@ -630,6 +655,22 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
+        /// Registers a new callback method that is called when a specified statistics observation is received.
+        /// </summary>
+        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="observationId">Observation identifier.</param>
+        /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, StatisticsObservation o) { ... }"</param>
+        public void RegisterObservationHandler(string MID, int observationId, Action<string, int, StatisticsObservation> observationHandler)
+        {
+            ObservationSubscription<StatisticsObservation> observationSubscription = new ObservationSubscription<StatisticsObservation>(MID, observationId, observationHandler);
+            _statisticsSubscriptions.Add(observationSubscription);
+            if (!_observationType.ContainsKey(observationId))
+            {
+                _observationType.Add(observationId, DataType.Statistics);
+            }
+        }
+
+        /// <summary>
         /// Removes all callback methods for a specified observation id.
         /// </summary>
         /// <param name="MID">Device identifier.</param>
@@ -637,11 +678,13 @@ namespace Masterloop.Plugin.Application
         public void UnregisterObservationHandler(string MID, int observationId)
         {
             RemoveHandler<Observation>(_observationSubscriptions, MID, observationId);
+            RemoveHandler<byte[]>(_binarySubscriptions, MID, observationId);
             RemoveHandler<BooleanObservation>(_booleanSubscriptions, MID, observationId);
             RemoveHandler<DoubleObservation>(_doubleSubscriptions, MID, observationId);
             RemoveHandler<IntegerObservation>(_integerSubscriptions, MID, observationId);
             RemoveHandler<PositionObservation>(_positionSubscriptions, MID, observationId);
             RemoveHandler<StringObservation>(_stringSubscriptions, MID, observationId);
+            RemoveHandler<StatisticsObservation>(_statisticsSubscriptions, MID, observationId);
 
             if (ActiveObservationHandlers(observationId) == 0)
             {
@@ -751,11 +794,13 @@ namespace Masterloop.Plugin.Application
             _liveRequests = new List<LiveAppRequest>();
             _disposed = false;
             _observationSubscriptions = new List<ObservationSubscription<Observation>>();
+            _binarySubscriptions = new List<ObservationSubscription<byte[]>>();
             _booleanSubscriptions = new List<ObservationSubscription<BooleanObservation>>();
             _doubleSubscriptions = new List<ObservationSubscription<DoubleObservation>>();
             _integerSubscriptions = new List<ObservationSubscription<IntegerObservation>>();
             _positionSubscriptions = new List<ObservationSubscription<PositionObservation>>();
             _stringSubscriptions = new List<ObservationSubscription<StringObservation>>();
+            _statisticsSubscriptions = new List<ObservationSubscription<StatisticsObservation>>();
             _commandSubscriptions = new List<CommandSubscription<Command>>();
             _commandResponseSubscriptions = new List<CommandSubscription<CommandResponse>>();
             _pulseSubscriptions = new List<PulseSubscription>();
@@ -777,8 +822,10 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private bool DispatchObservation(string MID, int observationId, string json, DataType dataType)
+        private bool DispatchObservation(string MID, int observationId, byte[] body, DataType dataType)
         {
+            string json = (dataType == DataType.Binary) ? null : Encoding.UTF8.GetString(body);
+
             int count = 0;
             // Handle base observation subscriptions
             ObservationSubscription<Observation> subscription = _observationSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
@@ -806,12 +853,24 @@ namespace Masterloop.Plugin.Application
                         subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
                         count++;
                         break;
+                    case DataType.Statistics:
+                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
+                        count++;
+                        break;
                 }
             }
             else  // Handle specific observation type subscriptions
             {
                 switch (dataType)
                 {
+                    case DataType.Binary:
+                        ObservationSubscription<byte[]> binSubscription = _binarySubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (binSubscription != null)
+                        {
+                            binSubscription.ObservationHandler(MID, observationId, body);
+                            count++;
+                        }
+                        break;
                     case DataType.Boolean:
                         ObservationSubscription<BooleanObservation> boolSubscription = _booleanSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
                         if (boolSubscription != null)
@@ -849,6 +908,14 @@ namespace Masterloop.Plugin.Application
                         if (strSubscription != null)
                         {
                             strSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
+                            count++;
+                        }
+                        break;
+                    case DataType.Statistics:
+                        ObservationSubscription<StatisticsObservation> statSubscription = _statisticsSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (statSubscription != null)
+                        {
+                            statSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
                             count++;
                         }
                         break;
@@ -1024,8 +1091,7 @@ namespace Masterloop.Plugin.Application
                     int observationId = MessageRoutingKey.ParseObservationId(routingKey);
                     if (observationId != 0 && _observationType.ContainsKey(observationId))
                     {
-                        string json = Encoding.UTF8.GetString(body);
-                        if (DispatchObservation(MID, observationId, json, _observationType[observationId]))
+                        if (DispatchObservation(MID, observationId, body, _observationType[observationId]))
                         {
                             if (!UseAutomaticAcknowledgement)
                             {
@@ -1159,6 +1225,7 @@ namespace Masterloop.Plugin.Application
         {
             int handlerCount = 0;
             handlerCount += _observationSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _binarySubscriptions.Count(s => observationId == s.ObservationId);
             handlerCount += _booleanSubscriptions.Count(s => observationId == s.ObservationId);
             handlerCount += _doubleSubscriptions.Count(s => observationId == s.ObservationId);
             handlerCount += _integerSubscriptions.Count(s => observationId == s.ObservationId);

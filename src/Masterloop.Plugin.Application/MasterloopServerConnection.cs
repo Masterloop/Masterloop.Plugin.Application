@@ -1082,6 +1082,8 @@ namespace Masterloop.Plugin.Application
                         return JsonConvert.DeserializeObject<PositionObservation>(json);
                     case DataType.String:
                         return JsonConvert.DeserializeObject<StringObservation>(json);
+                    case DataType.Statistics:
+                        return JsonConvert.DeserializeObject<StatisticsObservation>(json);
                     default:
                         throw new NotSupportedException("Unsupported data type: " + dataType.ToString());
                 }
@@ -1128,6 +1130,8 @@ namespace Masterloop.Plugin.Application
                         return JsonConvert.DeserializeObject<PositionObservation[]>(json);
                     case DataType.String:
                         return JsonConvert.DeserializeObject<StringObservation[]>(json);
+                    case DataType.Statistics:
+                        return JsonConvert.DeserializeObject<StatisticsObservation[]>(json);
                     default:
                         throw new NotSupportedException("Unsupported data type: " + dataType.ToString());
                 }
