@@ -13,11 +13,14 @@ namespace Masterloop.Plugin.Application
         bool IgnoreSslCertificateErrors { get; set; }
         ushort HeartbeatInterval { get; set; }
         int Timeout { get; set; }
+        ApplicationMetadata Metadata { get; set; }
         string LastErrorMessage { get; set; }
         LiveConnectionDetails ConnectionDetails { get; }
         string ConnectionKey { get; }
         bool UseAutomaticCallbacks { get; set; }
         bool UseAutomaticAcknowledgement { get; set; }
+        int QueueCount { get; }
+        int PrefetchCount { get; set; }
 
         bool Connect();
         bool Connect(LiveAppRequest[] liveRequests);

@@ -13,6 +13,8 @@ using System.Globalization;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 
 namespace Masterloop.Plugin.Application
 {
@@ -24,6 +26,7 @@ namespace Masterloop.Plugin.Application
         private readonly string _password;
         private string _lastErrorMessage;
         private HttpStatusCode _lastHttpStatusCode;
+        private string _localAddress;
         #endregion // PrivateMembers
 
         #region Constants
@@ -102,6 +105,11 @@ namespace Masterloop.Plugin.Application
         public int Timeout { get; set; }
         #endregion  // Properties
 
+        /// <summary>
+        /// Application metadata used in server api interactions for improved tracability (optional).
+        /// </summary>
+        public ApplicationMetadata Metadata { get; set; }
+
         #region LifeCycle
         /// <summary>
         /// Constructs a new BasicApplication object.
@@ -123,6 +131,7 @@ namespace Masterloop.Plugin.Application
                 _baseAddress = string.Format("http://{0}", hostName);
             }
             Timeout = _defaultTimeout;
+            _localAddress = GetLocalIPAddress();
         }
 
         /// <summary>
@@ -1073,6 +1082,8 @@ namespace Masterloop.Plugin.Application
                         return JsonConvert.DeserializeObject<PositionObservation>(json);
                     case DataType.String:
                         return JsonConvert.DeserializeObject<StringObservation>(json);
+                    case DataType.Statistics:
+                        return JsonConvert.DeserializeObject<StatisticsObservation>(json);
                     default:
                         throw new NotSupportedException("Unsupported data type: " + dataType.ToString());
                 }
@@ -1119,6 +1130,8 @@ namespace Masterloop.Plugin.Application
                         return JsonConvert.DeserializeObject<PositionObservation[]>(json);
                     case DataType.String:
                         return JsonConvert.DeserializeObject<StringObservation[]>(json);
+                    case DataType.Statistics:
+                        return JsonConvert.DeserializeObject<StatisticsObservation[]>(json);
                     default:
                         throw new NotSupportedException("Unsupported data type: " + dataType.ToString());
                 }
@@ -1133,6 +1146,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             bool success = false;
             string result = string.Empty;
@@ -1178,6 +1193,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             bool success = false;
             string result = string.Empty;
@@ -1224,6 +1241,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             bool success = false;
@@ -1270,6 +1289,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             bool success = false;
@@ -1314,6 +1335,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             try
@@ -1357,6 +1380,8 @@ namespace Masterloop.Plugin.Application
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             try
@@ -1436,6 +1461,22 @@ namespace Masterloop.Plugin.Application
                 }
             }
             return default(T);
+        }
+
+        private string GetLocalIPAddress()
+        {
+            if (NetworkInterface.GetIsNetworkAvailable())
+            {
+                var host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (var ip in host.AddressList)
+                {
+                    if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        return ip.ToString();
+                    }
+                }
+            }
+            return null;
         }
         #endregion //PrivateMethods
     }

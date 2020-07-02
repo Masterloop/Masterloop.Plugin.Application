@@ -27,6 +27,10 @@ namespace Masterloop.Plugin.Application
 
         public string StatusDescription { get; set; }
 
+        public ApplicationMetadata Metadata { get; set; }
+
+        public string OriginAddress { get; set; }
+
         /// <summary>
         /// Time in seconds.
         /// </summary>
@@ -171,6 +175,12 @@ namespace Masterloop.Plugin.Application
                 string authInfo = this.Username + ":" + this.Password;
                 authInfo = Convert.ToBase64String(Encoding.Default.GetBytes(authInfo));
                 request.Headers["Authorization"] = "Basic " + authInfo;
+            }
+            if (this.Metadata != null)
+            {
+                if (!string.IsNullOrEmpty(this.Metadata.Application)) request.Headers["OriginApplication"] = this.Metadata.Application;
+                if (!string.IsNullOrEmpty(this.OriginAddress)) request.Headers["OriginAddress"] = this.OriginAddress;
+                if (!string.IsNullOrEmpty(this.Metadata.Reference)) request.Headers["OriginReference"] = this.Metadata.Reference;
             }
             request.Accept = this.Accept;
             request.Method = method;
