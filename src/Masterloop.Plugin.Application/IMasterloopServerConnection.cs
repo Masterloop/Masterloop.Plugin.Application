@@ -15,10 +15,11 @@ namespace Masterloop.Plugin.Application
 {
     public interface IMasterloopServerConnection : IDisposable
     {
-        // Propertie
+        // Properties
         string LastErrorMessage { get; set; }
         HttpStatusCode LastHttpStatusCode { get; set; }
         int Timeout { get; set; }
+        ApplicationMetadata Metadata { get; set; }
 
         // Templates
         DeviceTemplate[] GetTemplates();

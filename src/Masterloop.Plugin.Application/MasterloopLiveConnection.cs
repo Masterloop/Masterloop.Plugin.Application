@@ -9,7 +9,10 @@ using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -40,6 +43,7 @@ namespace Masterloop.Plugin.Application
         private readonly object _modelLock;
         private Dictionary<int, DataType> _observationType;
         private Queue<BasicDeliverEventArgs> _queue;
+        private string _localAddress;
         #endregion // PrivateMembers
 
         #region Properties
@@ -75,6 +79,11 @@ namespace Masterloop.Plugin.Application
         /// Network timeout in seconds.
         /// </summary>
         public int Timeout { get; set; } = 30;
+
+        /// <summary>
+        /// Application metadata used in server api interactions for improved tracability (optional).
+        /// </summary>
+        public ApplicationMetadata Metadata { get; set; }
 
         /// <summary>
         /// Last error message as text string in english.
@@ -121,6 +130,24 @@ namespace Masterloop.Plugin.Application
         /// Set to True to quickly acknowledge all incoming messages (default), or False for acknowledge only messages with registered handlers.
         /// </summary>
         public bool UseAutomaticAcknowledgement { get; set; } = true;
+
+        /// <summary>
+        /// Returns number of queued messages.
+        /// </summary>
+        public int QueueCount
+        {
+            get
+            {
+                return _queue.Count;
+            }
+        }
+
+        /// <summary>
+        /// Prefetch count, must be set before opening connection. Default is 20.
+        /// More info can be found here: https://www.rabbitmq.com/consumer-prefetch.html
+        /// </summary>
+        public int PrefetchCount { get; set; } = 20;
+
         #endregion
 
         #region Construction
@@ -138,6 +165,7 @@ namespace Masterloop.Plugin.Application
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
             _queue = new Queue<BasicDeliverEventArgs>();
+            _localAddress = GetLocalIPAddress();
         }
 
         /// <summary>
@@ -151,6 +179,7 @@ namespace Masterloop.Plugin.Application
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
             _queue = new Queue<BasicDeliverEventArgs>();
+            _localAddress = GetLocalIPAddress();
         }
 
         /// <summary>
@@ -404,6 +433,10 @@ namespace Masterloop.Plugin.Application
                     {
                         properties.Expiration = ts.TotalMilliseconds.ToString("F0");
                     }
+                }
+                if (this.Metadata != null)
+                {
+                    AppendMetadata(properties);
                 }
                 string routingKey = MessageRoutingKey.GenerateDeviceCommandRoutingKey(MID, command.Id, command.Timestamp);
                 string json = JsonConvert.SerializeObject(command);
@@ -877,11 +910,36 @@ namespace Masterloop.Plugin.Application
             }
         }
 
+        private void AppendMetadata(IBasicProperties properties)
+        {
+            properties.Headers = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(this.Metadata.Application)) properties.Headers.Add("OriginApplication", this.Metadata.Application);
+            if (this.ConnectionDetails != null && !string.IsNullOrEmpty(this.ConnectionDetails.Username)) properties.Headers.Add("OriginAccount", this.ConnectionDetails.Username);
+            if (!string.IsNullOrEmpty(_localAddress)) properties.Headers.Add("OriginAddress", _localAddress);
+            if (!string.IsNullOrEmpty(this.Metadata.Reference)) properties.Headers.Add("OriginReference", this.Metadata.Reference);
+        }
+
         private IDictionary<string, object> GetMessageHeader(BasicDeliverEventArgs args)
         {
             if (args == null) return new Dictionary<string, object>();
             if (args.BasicProperties == null) return new Dictionary<string, object>();
             return args.BasicProperties.Headers;
+        }
+
+        private string GetLocalIPAddress()
+        {
+            if (NetworkInterface.GetIsNetworkAvailable())
+            {
+                var host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (var ip in host.AddressList)
+                {
+                    if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        return ip.ToString();
+                    }
+                }
+            }
+            return null;
         }
 
         private bool Open()
@@ -928,6 +986,7 @@ namespace Masterloop.Plugin.Application
                     lock (_modelLock)
                     {
                         _model = _connection.CreateModel();
+                        _model.BasicQos(0, (ushort)this.PrefetchCount, false);
                         return _model != null && _model.IsOpen;
                     }
                 }
