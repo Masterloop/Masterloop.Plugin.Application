@@ -40,6 +40,7 @@ namespace Masterloop.Plugin.Application
         void RegisterObservationHandler(string MID, int observationId, Action<string, int, IntegerObservation> observationHandler);
         void RegisterObservationHandler(string MID, int observationId, Action<string, int, PositionObservation> observationHandler);
         void RegisterObservationHandler(string MID, int observationId, Action<string, int, StringObservation> observationHandler);
+        void RegisterObservationHandler(string MID, int observationId, Action<string, int, StatisticsObservation> observationHandler);
         void UnregisterObservationHandler(string MID, int observationId);
 
         void RegisterCommandHandler(string MID, int commandId, Action<string, Command> commandHandler);
