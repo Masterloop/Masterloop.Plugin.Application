@@ -17,6 +17,14 @@ namespace Masterloop.Plugin.Application.Tests
         }
 
         [Fact]
+        public void GetDevicelets()
+        {
+            Devicelet[] devicelets = GetMCSAPI().GetDevicelets(true);
+            Assert.NotNull(devicelets);
+            Assert.Contains(GetMID(), devicelets.Select(d => d.MID));
+        }
+
+        [Fact]
         public void GetTemplateDevices()
         {
             Device[] devices = GetMCSAPI().GetTemplateDevices(GetTID());

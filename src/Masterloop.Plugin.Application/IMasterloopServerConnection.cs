@@ -19,6 +19,7 @@ namespace Masterloop.Plugin.Application
         string LastErrorMessage { get; set; }
         HttpStatusCode LastHttpStatusCode { get; set; }
         int Timeout { get; set; }
+        bool UseCompression { get; set; }
         ApplicationMetadata Metadata { get; set; }
 
         // Templates

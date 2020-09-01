@@ -31,6 +31,8 @@ namespace Masterloop.Plugin.Application
 
         public string OriginAddress { get; set; }
 
+        public bool UseCompression { get; set; }
+
         /// <summary>
         /// Time in seconds.
         /// </summary>
@@ -183,6 +185,7 @@ namespace Masterloop.Plugin.Application
                 if (!string.IsNullOrEmpty(this.Metadata.Reference)) request.Headers["OriginReference"] = this.Metadata.Reference;
             }
             request.Accept = this.Accept;
+            request.AutomaticDecompression = this.UseCompression ? DecompressionMethods.GZip : DecompressionMethods.None;
             request.Method = method;
             request.Timeout = Timeout * 1000;
             request.ReadWriteTimeout = Timeout * 1000;

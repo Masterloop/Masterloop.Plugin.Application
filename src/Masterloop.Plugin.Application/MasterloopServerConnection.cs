@@ -15,6 +15,10 @@ using System.Threading.Tasks;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text;
+using System.IO;
+using Masterloop.Codecs;
+using System.Reflection;
 
 namespace Masterloop.Plugin.Application
 {
@@ -24,8 +28,6 @@ namespace Masterloop.Plugin.Application
         private readonly string _baseAddress;
         private readonly string _username;
         private readonly string _password;
-        private string _lastErrorMessage;
-        private HttpStatusCode _lastHttpStatusCode;
         private string _localAddress;
         #endregion // PrivateMembers
 
@@ -65,6 +67,8 @@ namespace Masterloop.Plugin.Application
         private const string _addressToolsMultiCommands = "/api/tools/multicommands";
         private const string _addressPing = "/api/tools/ping";
 
+        private const string _MIME_TYPE_MASTERLOOP_DEVICES = "application/vnd.masterloop.devices";
+
         private const int _defaultTimeout = 30; // 30 seconds
         #endregion // Constants
 
@@ -72,37 +76,22 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Last error message after an error, or null if no errors have occured.
         /// </summary>
-        public string LastErrorMessage
-        {
-            get
-            {
-                return _lastErrorMessage;
-            }
-            set
-            {
-                _lastErrorMessage = value;
-            }
-        }
+        public string LastErrorMessage { get; set; }
 
         /// <summary>
         /// HTTP status code received from last API request.
         /// </summary>
-        public System.Net.HttpStatusCode LastHttpStatusCode
-        {
-            get
-            {
-                return _lastHttpStatusCode;
-            }
-            set
-            {
-                _lastHttpStatusCode = value;
-            }
-        }
+        public System.Net.HttpStatusCode LastHttpStatusCode { get; set; }
 
         /// <summary>
         /// Network timeout in seconds.
         /// </summary>
         public int Timeout { get; set; }
+
+        /// <summary>
+        /// Use HTTP traffic compression (gzip).
+        /// </summary>
+        public bool UseCompression { get; set; }
         #endregion  // Properties
 
         /// <summary>
@@ -132,6 +121,16 @@ namespace Masterloop.Plugin.Application
             }
             Timeout = _defaultTimeout;
             _localAddress = GetLocalIPAddress();
+            UseCompression = true;
+
+            // Set default metadata to calling application.
+            Assembly calling = Assembly.GetCallingAssembly();
+            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+            Metadata = new ApplicationMetadata()
+            {
+                Application = calling.GetName().Name,
+                Reference = fvi.FileVersion
+            };
         }
 
         /// <summary>
@@ -177,6 +176,66 @@ namespace Masterloop.Plugin.Application
         #endregion
 
         #region Devices
+        public Devicelet[] GetDevicelets(bool includeDetails = false)
+        {
+            return GetDeviceletsAsync(includeDetails).Result;
+        }
+
+        private async Task<Devicelet[]> GetDeviceletsAsync(bool includeDetails = false)
+        {
+            string url = string.Format(_addressDevicesWithMetadataAndDetails, false.ToString().ToLower(), includeDetails.ToString().ToLower());
+            Tuple<bool, byte[]> result = await GetBytesAsync(url, _MIME_TYPE_MASTERLOOP_DEVICES);
+            if (result.Item1 && result.Item2 != null)
+            {
+                using (MemoryStream stream = new MemoryStream(result.Item2))
+                {
+                    using (BigEndianReader reader = new BigEndianReader(new BinaryReader(stream)))
+                    {
+                        byte version = reader.ReadByte();
+                        if (version == 1)
+                        {
+                            List<Devicelet> devicelets = new List<Devicelet>();
+                            UInt32 templateCount = reader.ReadUInt32();
+                            for (int i = 0; i < templateCount; i++)
+                            {
+                                byte tidLength = reader.ReadByte();
+                                byte[] tidBinary = reader.ReadBytes(tidLength);
+                                string tid = Encoding.UTF8.GetString(tidBinary);
+                                UInt32 deviceCount = reader.ReadUInt32();
+                                for (int j = 0; j < deviceCount; j++)
+                                {
+                                    Devicelet devicelet = new Devicelet();
+                                    devicelet.TID = tid;
+                                    byte midLength = reader.ReadByte();
+                                    byte[] midBinary = reader.ReadBytes(midLength);
+                                    devicelet.MID = Encoding.UTF8.GetString(midBinary);
+                                    byte nameLength = reader.ReadByte();
+                                    byte[] nameBinary = reader.ReadBytes(nameLength);
+                                    devicelet.Name = Encoding.UTF8.GetString(nameBinary);
+                                    UInt32 latestPulseUnix = reader.ReadUInt32();
+                                    if (latestPulseUnix > 0)
+                                    {
+                                        devicelet.LatestPulse = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(latestPulseUnix);
+                                    }
+                                    devicelets.Add(devicelet);
+                                }
+                            }
+                            return devicelets.ToArray();
+                        }
+                        else
+                        {
+                            this.LastErrorMessage = $"Unsupported devicelet version number: {version}";
+                            return null;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// Returns device catalog for current user.
         /// </summary>
@@ -429,7 +488,7 @@ namespace Masterloop.Plugin.Application
         public Observation GetCurrentObservation(string MID, int observationId, DataType dataType)
         {
             string url = string.Format(_addressDeviceObservationCurrent, MID, observationId);
-            Tuple<bool, string> result = Get(url);
+            Tuple<bool, string> result = GetString(url);
             if (result.Item1)
             {
                 return DeserializeObservation(result.Item2, dataType);
@@ -447,7 +506,7 @@ namespace Masterloop.Plugin.Application
         public async Task<Observation> GetCurrentObservationAsync(string MID, int observationId, DataType dataType)
         {
             string url = string.Format(_addressDeviceObservationCurrent, MID, observationId);
-            Tuple<bool, string> result = await GetAsync(url);
+            Tuple<bool, string> result = await GetStringAsync(url);
             if (result.Item1)
             {
                 return DeserializeObservation(result.Item2, dataType);
@@ -463,7 +522,7 @@ namespace Masterloop.Plugin.Application
         public IdentifiedObservation[] GetCurrentObservations(string MID)
         {
             string url = string.Format(_addressDeviceObservationsCurrent, MID);
-            Tuple<bool, string> result = Get(url);
+            Tuple<bool, string> result = GetString(url);
             if (result.Item1)
             {
                 return DeserializeIdentifiedObservations(result.Item2);
@@ -479,7 +538,7 @@ namespace Masterloop.Plugin.Application
         public async Task<IdentifiedObservation[]> GetCurrentObservationsAsync(string MID)
         {
             string url = string.Format(_addressDeviceObservationsCurrent, MID);
-            Tuple<bool, string> result = await GetAsync(url);
+            Tuple<bool, string> result = await GetStringAsync(url);
             if (result.Item1)
             {
                 return DeserializeIdentifiedObservations(result.Item2);
@@ -499,7 +558,7 @@ namespace Masterloop.Plugin.Application
         public Observation[] GetObservations(string MID, int observationId, DataType dataType, DateTime from, DateTime to)
         {
             string url = string.Format(_addressDeviceObservations, MID, observationId, from.ToString("o"), to.ToString("o"));
-            Tuple<bool, string> result = Get(url);
+            Tuple<bool, string> result = GetString(url);
             if (result.Item1)
             {
                 return DeserializeObservations(result.Item2, dataType);
@@ -519,7 +578,7 @@ namespace Masterloop.Plugin.Application
         public async Task<Observation[]> GetObservationsAsync(string MID, int observationId, DataType dataType, DateTime from, DateTime to)
         {
             string url = string.Format(_addressDeviceObservations, MID, observationId, from.ToString("o"), to.ToString("o"));
-            Tuple<bool, string> result = await GetAsync(url);
+            Tuple<bool, string> result = await GetStringAsync(url);
             if (result.Item1)
             {
                 return DeserializeObservations(result.Item2, dataType);
@@ -1138,69 +1197,48 @@ namespace Masterloop.Plugin.Application
             }
             return null;
         }
-
-        private Tuple<bool, string> Get(string addressExtension)
+        private Tuple<bool, string> GetString(string addressExtension, string accept = "application/json")
         {
-            ExtendedWebClient webClient = new ExtendedWebClient();
-            webClient.Accept = "application/json";
-            webClient.Username = _username;
-            webClient.Password = _password;
-            webClient.Timeout = Timeout;
-            webClient.Metadata = this.Metadata;
-            webClient.OriginAddress = _localAddress;
-            string url = _baseAddress + addressExtension;
-            bool success = false;
-            string result = string.Empty;
-            try
+            Tuple<bool, byte[]> result = GetBytes(addressExtension, accept);
+            if (result.Item1 && result.Item2 != null)
             {
-                result = webClient.DownloadString(url);
-                LastHttpStatusCode = webClient.StatusCode;
-                if (webClient.StatusCode == HttpStatusCode.OK)
-                {
-                    LastErrorMessage = string.Empty;
-                    success = true;
-                }
-                else
-                {
-                    LastErrorMessage = webClient.StatusDescription;
-                }
+                return new Tuple<bool, string>(result.Item1, Encoding.UTF8.GetString(result.Item2));
             }
-            catch (WebException e)
+            else
             {
-                if (e.Response == null)
-                {
-                    LastHttpStatusCode = HttpStatusCode.RequestTimeout;
-                    LastErrorMessage = e.Message;
-                }
-                else
-                {
-                    LastHttpStatusCode = ((HttpWebResponse)e.Response).StatusCode;
-                    LastErrorMessage = ((HttpWebResponse)e.Response).StatusDescription;
-                }
+                return new Tuple<bool, string>(result.Item1, string.Empty);
             }
-            catch (Exception e)
-            {
-                LastHttpStatusCode = webClient.StatusCode;
-                LastErrorMessage = e.Message;
-            }
-            return new Tuple<bool, string>(success, result);
         }
 
-        private async Task<Tuple<bool, string>> GetAsync(string addressExtension)
+        private async Task<Tuple<bool, string>> GetStringAsync(string addressExtension, string accept = "application/json")
+        {
+            Tuple<bool, byte[]> result = await GetBytesAsync(addressExtension, accept);
+            if (result.Item1 && result.Item2 != null)
+            {
+                return new Tuple<bool, string>(result.Item1, Encoding.UTF8.GetString(result.Item2));
+            }
+            else
+            {
+                return new Tuple<bool, string>(result.Item1, string.Empty);
+            }
+        }
+
+        private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = "application/json")
         {
             ExtendedWebClient webClient = new ExtendedWebClient();
-            webClient.Accept = "application/json";
+            webClient.Accept = accept;
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
             string url = _baseAddress + addressExtension;
             bool success = false;
-            string result = string.Empty;
+            byte[] result = null;
             try
             {
-                result = await webClient.DownloadStringAsync(url);
+                result = webClient.DownloadBytes(url);
                 LastHttpStatusCode = webClient.StatusCode;
                 if (webClient.StatusCode == HttpStatusCode.OK)
                 {
@@ -1230,7 +1268,55 @@ namespace Masterloop.Plugin.Application
                 LastHttpStatusCode = webClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
-            return new Tuple<bool, string>(success, result);
+            return new Tuple<bool, byte[]>(success, result);
+        }
+
+        private async Task<Tuple<bool, byte[]>> GetBytesAsync(string addressExtension, string accept = "application/json")
+        {
+            ExtendedWebClient webClient = new ExtendedWebClient();
+            webClient.Accept = accept;
+            webClient.Username = _username;
+            webClient.Password = _password;
+            webClient.Timeout = Timeout;
+            webClient.Metadata = this.Metadata;
+            webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
+            string url = _baseAddress + addressExtension;
+            bool success = false;
+            byte[] result = null;
+            try
+            {
+                result = await webClient.DownloadBytesAsync(url);
+                LastHttpStatusCode = webClient.StatusCode;
+                if (webClient.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    success = true;
+                }
+                else
+                {
+                    LastErrorMessage = webClient.StatusDescription;
+                }
+            }
+            catch (WebException e)
+            {
+                if (e.Response == null)
+                {
+                    LastHttpStatusCode = HttpStatusCode.RequestTimeout;
+                    LastErrorMessage = e.Message;
+                }
+                else
+                {
+                    LastHttpStatusCode = ((HttpWebResponse)e.Response).StatusCode;
+                    LastErrorMessage = ((HttpWebResponse)e.Response).StatusDescription;
+                }
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = webClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+            return new Tuple<bool, byte[]>(success, result);
         }
 
         private Tuple<bool, string> Post(string addressExtension, string body, string contentType = "application/json")
@@ -1243,6 +1329,7 @@ namespace Masterloop.Plugin.Application
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             bool success = false;
@@ -1291,6 +1378,7 @@ namespace Masterloop.Plugin.Application
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             bool success = false;
@@ -1337,6 +1425,7 @@ namespace Masterloop.Plugin.Application
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             try
@@ -1382,6 +1471,7 @@ namespace Masterloop.Plugin.Application
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
+            webClient.UseCompression = this.UseCompression;
             string url = _baseAddress + addressExtension;
             string result = string.Empty;
             try
@@ -1413,7 +1503,7 @@ namespace Masterloop.Plugin.Application
 
         private T GetDeserialized<T>(string url)
         {
-            Tuple<bool, string> result = Get(url);
+            Tuple<bool, string> result = GetString(url);
             if (result.Item1)
             {
                 if (result.Item2 != string.Empty)
@@ -1426,7 +1516,7 @@ namespace Masterloop.Plugin.Application
 
         private async Task<T> GetDeserializedAsync<T>(string url)
         {
-            Tuple<bool, string> result = await GetAsync(url);
+            Tuple<bool, string> result = await GetStringAsync(url);
             if (result.Item1)
             {
                 if (result.Item2 != string.Empty)

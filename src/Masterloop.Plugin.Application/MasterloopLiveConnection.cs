@@ -14,6 +14,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -169,6 +170,15 @@ namespace Masterloop.Plugin.Application
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
+
+            // Set default metadata to calling application.
+            Assembly calling = Assembly.GetCallingAssembly();
+            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+            Metadata = new ApplicationMetadata()
+            {
+                Application = calling.GetName().Name,
+                Reference = fvi.FileVersion
+            };
         }
 
         /// <summary>
@@ -183,6 +193,15 @@ namespace Masterloop.Plugin.Application
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
+
+            // Set default metadata to calling application.
+            Assembly calling = Assembly.GetCallingAssembly();
+            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+            Metadata = new ApplicationMetadata()
+            {
+                Application = calling.GetName().Name,
+                Reference = fvi.FileVersion
+            };
         }
 
         /// <summary>
