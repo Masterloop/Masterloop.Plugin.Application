@@ -38,6 +38,28 @@ namespace Masterloop.Plugin.Application.Tests
             return new MasterloopLiveConnection(lcd);
         }
 
+        protected static MasterloopLiveConnection GetMCSPersistentConnection()
+        {
+            MasterloopServerConnection mcs = GetMCSAPI();
+            string subscriptionKey = GetPersistentSubscriptionKey();
+            mcs.DeleteLivePersistentSubscription(subscriptionKey);
+            LivePersistentSubscriptionRequest request = new LivePersistentSubscriptionRequest()
+            {
+                SubscriptionKey = subscriptionKey,
+                TID = GetTID(),
+                ConnectAllCommands = true
+            };
+            if (mcs.CreateLivePersistentSubscription(request))
+            {
+                LiveConnectionDetails lcd = mcs.GetLivePersistentSubscriptionConnection(subscriptionKey);
+                return new MasterloopLiveConnection(lcd);
+            }
+            else
+            {
+                throw new Exception("Could not create subscription");
+            }
+        }
+
         protected static string GetMID()
         {
             IConfiguration config = GetConfig();
@@ -48,6 +70,12 @@ namespace Masterloop.Plugin.Application.Tests
         {
             IConfiguration config = GetConfig();
             return config["TID"];
+        }
+
+        protected static string GetPersistentSubscriptionKey()
+        {
+            IConfiguration config = GetConfig();
+            return config["PersistentSubscriptionKey"];
         }
     }
 }

@@ -68,12 +68,6 @@ namespace Masterloop.Plugin.Application
         CommandHistory[] GetDeviceCommandHistory(string MID, DateTime from, DateTime to);
         Task<CommandHistory[]> GetDeviceCommandHistoryAsync(string MID, DateTime from, DateTime to);
 
-        // Export
-        ExportJob[] GetExportJobs();
-        Task<ExportJob[]> GetExportJobsAsync();
-        bool SendExportRequest(ExportRequest request);
-        Task<bool> SendExportRequestAsync(ExportRequest request);
-
         // Settings
         bool SetSettings(string MID, SettingValue[] values);
         Task<bool> SetSettingsAsync(string MID, SettingValue[] values);
@@ -110,7 +104,7 @@ namespace Masterloop.Plugin.Application
         SnapshotItem[] GetCurrentSnapshot(SnapshotRequest snapshotRequest);
         Task<SnapshotItem[]> GetCurrentSnapshotAsync(SnapshotRequest snapshotRequest);
 
-        // Connection
+        // Connectivity
         bool CanPing();
         Task<bool> CanPingAsync();
     }

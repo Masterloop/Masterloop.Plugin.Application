@@ -48,9 +48,10 @@ namespace Masterloop.Plugin.Application
         private Dictionary<int, DataType> _observationType;
         private ConcurrentQueue<BasicDeliverEventArgs> _queue;
         private string _localAddress;
-        #endregion // PrivateMembers
+        private bool _transactionOpen;
+        #endregion
 
-        #region Properties
+        #region Configuration
         /// <summary>
         /// True ignores any SSL certificate errors, False does not ignore any SSL certificate errors.
         /// </summary>
@@ -80,7 +81,7 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Network timeout in seconds.
+        /// Network timeout in seconds (default: 30).
         /// </summary>
         public int Timeout { get; set; } = 30;
 
@@ -88,11 +89,6 @@ namespace Masterloop.Plugin.Application
         /// Application metadata used in server api interactions for improved tracability (optional).
         /// </summary>
         public ApplicationMetadata Metadata { get; set; }
-
-        /// <summary>
-        /// Last error message as text string in english.
-        /// </summary>
-        public string LastErrorMessage { get; set; }
 
         /// <summary>
         /// Live connection details.
@@ -136,6 +132,19 @@ namespace Masterloop.Plugin.Application
         public bool UseAutomaticAcknowledgement { get; set; } = true;
 
         /// <summary>
+        /// Set to True to send messages immediatelly (default), or False when using transactions.
+        /// </summary>
+        public bool UseAtomicTransactions { get; set; } = true;
+
+        /// <summary>
+        /// Prefetch count, must be set before opening connection. Default is 20.
+        /// More info can be found here: https://www.rabbitmq.com/consumer-prefetch.html
+        /// </summary>
+        public int PrefetchCount { get; set; } = 20;
+        #endregion
+
+        #region State
+        /// <summary>
         /// Returns number of queued messages.
         /// </summary>
         public int QueueCount
@@ -147,14 +156,12 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Prefetch count, must be set before opening connection. Default is 20.
-        /// More info can be found here: https://www.rabbitmq.com/consumer-prefetch.html
+        /// Last error message as text string in english.
         /// </summary>
-        public int PrefetchCount { get; set; } = 20;
-
+        public string LastErrorMessage { get; set; }
         #endregion
 
-        #region Construction
+        #region LifeCycle
         /// <summary>
         /// Constructs a new live connection using MCS credentials.
         /// </summary>
@@ -170,6 +177,7 @@ namespace Masterloop.Plugin.Application
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
+            _transactionOpen = false;
 
             // Set default metadata to calling application.
             Assembly calling = Assembly.GetCallingAssembly();
@@ -193,6 +201,7 @@ namespace Masterloop.Plugin.Application
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
+            _transactionOpen = false;
 
             // Set default metadata to calling application.
             Assembly calling = Assembly.GetCallingAssembly();
@@ -319,6 +328,7 @@ namespace Masterloop.Plugin.Application
                     }
                     _model.Dispose();
                     _model = null;
+                    _transactionOpen = false;
                 }
             }
 
@@ -432,7 +442,7 @@ namespace Masterloop.Plugin.Application
             // Use concurrent dequeueing, return dispatch state if successfull
             if (_queue.TryDequeue(out BasicDeliverEventArgs args))
             {
-                return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
+                return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body.Span, args.DeliveryTag);
             }
 
             // Failed to dequeue, probably concurrent dequeue and empty queue, so return false
@@ -440,13 +450,19 @@ namespace Masterloop.Plugin.Application
         }
         #endregion
 
+        #region Publish
         /// <summary>
         /// Synchronously publishes a new command and optionally waits for acceptance.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="command">Command object.</param>
         public bool SendCommand(string MID, Command command)
         {
+            if (UseAtomicTransactions && _transactionOpen)
+            {
+                throw new ArgumentException("Unable to use atomic transactions when object has an open transaction.");
+            }
+
             if (IsConnected())
             {
                 IBasicProperties properties = GetMessageProperties(1);
@@ -484,13 +500,18 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Sends an application pulse to the server for a specified device.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="pulseId">Application pulse identifier.</param>
         /// <param name="timestamp">Timestamp in UTC indicating the time of the pulse. null for current time.</param>
         /// <param name="expiryMilliseconds">Expiry time of pulse signal in milli seconds. Use 0 to never expire. Default 300000 (5 minutes).</param>
         /// <returns>True if successful, False otherwise.</returns>
         public bool SendPulse(string MID, int pulseId, DateTime? timestamp, int expiryMilliseconds = 300000)
         {
+            if (UseAtomicTransactions && _transactionOpen)
+            {
+                throw new ArgumentException("Unable to use atomic transactions when object has an open transaction.");
+            }
+
             if (IsConnected())
             {
                 if (!timestamp.HasValue)
@@ -558,9 +579,89 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
+        /// Begins a new multi publish transaction.
+        /// </summary>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool PublishBegin()
+        {
+            if (UseAutomaticCallbacks)
+            {
+                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
+            }
+            lock (_modelLock)
+            {
+                try
+                {
+                    _model.TxSelect();
+                    _transactionOpen = true;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    LastErrorMessage = e.Message;
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Commit a multi publish transaction.
+        /// </summary>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool PublishCommit()
+        {
+            if (UseAutomaticCallbacks)
+            {
+                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
+            }
+            lock (_modelLock)
+            {
+                try
+                {
+                    _model.TxCommit();
+                    _transactionOpen = false;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    LastErrorMessage = e.Message;
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Rollback a multi publish transaction.
+        /// </summary>
+        /// <returns>True if successful, False otherwise.</returns>
+        public bool PublishRollback()
+        {
+            if (UseAutomaticCallbacks)
+            {
+                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
+            }
+            lock (_modelLock)
+            {
+                try
+                {
+                    _model.TxRollback();
+                    _transactionOpen = false;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    LastErrorMessage = e.Message;
+                    return false;
+                }
+            }
+        }
+        #endregion
+
+        #region ObservationSubscription
+        /// <summary>
         /// Registers a new callback method that is called when a specified observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, Observation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, Observation> observationHandler, DataType dataType)
@@ -583,7 +684,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified binary observation blob is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, byte[] o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, byte[]> observationHandler)
@@ -599,7 +700,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified boolean observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, BooleanObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, BooleanObservation> observationHandler)
@@ -615,7 +716,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified double observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, DoubleObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, DoubleObservation> observationHandler)
@@ -631,7 +732,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified integer observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, IntegerObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, IntegerObservation> observationHandler)
@@ -647,7 +748,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified position observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, PositionObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, PositionObservation> observationHandler)
@@ -663,7 +764,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified string observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, StringObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, StringObservation> observationHandler)
@@ -679,7 +780,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified statistics observation is received.
         /// </summary>
-        /// <param name="MID">Device identifier, all devices must be of the same template.</param>
+        /// <param name="MID">Device identifier or null for all, all devices must be of the same template.</param>
         /// <param name="observationId">Observation identifier.</param>
         /// <param name="observationHandler">Callback method with signature "void Callback(string MID, int observationId, StatisticsObservation o) { ... }"</param>
         public void RegisterObservationHandler(string MID, int observationId, Action<string, int, StatisticsObservation> observationHandler)
@@ -695,7 +796,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Removes all callback methods for a specified observation id.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="observationId">Observation identifier.</param>
         public void UnregisterObservationHandler(string MID, int observationId)
         {
@@ -713,13 +814,15 @@ namespace Masterloop.Plugin.Application
                 _observationType.Remove(observationId);
             }
         }
+        #endregion
 
+        #region CommandSubscription
         /// <summary>
         /// Registers a new callback method that is called when a specified command is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="commandId">Command identifier.</param>
-        /// <param name="commandHandler">Callback method with argument Command (e.g. "void Callback(Command cmd) { ... }"</param>
+        /// <param name="commandHandler">Callback method with signature "void Callback(string MID, Command cmd) { ... }"</param>
         public void RegisterCommandHandler(string MID, int commandId, Action<string, Command> commandHandler)
         {
             CommandSubscription<Command> commandSubscription = new CommandSubscription<Command>(MID, commandId, commandHandler);
@@ -729,7 +832,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Removes all callback methods for a specified command.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="commandId">Command identifier.</param>
         public void UnregisterCommandHandler(string MID, int commandId)
         {
@@ -750,9 +853,9 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Registers a new callback method that is called when a specified command response is received.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="commandId">Command identifier.</param>
-        /// <param name="commandResponseHandler">Callback method with argument CommandResponse (e.g. "void Callback(CommandResponse cmdResponse) { ... }"</param>
+        /// <param name="commandResponseHandler">Callback method with signature "void Callback(string MID, CommandResponse cmdResponse) { ... }"</param>
         public void RegisterCommandResponseHandler(string MID, int commandId, Action<string, CommandResponse> commandResponseHandler)
         {
             CommandSubscription<CommandResponse> commandSubscription = new CommandSubscription<CommandResponse>(MID, commandId, commandResponseHandler);
@@ -762,7 +865,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Removes all response callback methods for a specified command.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         /// <param name="commandId">Command identifier.</param>
         public void UnregisterCommandResponseHandler(string MID, int commandId)
         {
@@ -779,12 +882,14 @@ namespace Masterloop.Plugin.Application
                 _commandResponseSubscriptions.Remove(handlersToRemove[i]);
             }
         }
+        #endregion
 
+        #region PulseSubscription
         /// <summary>
         /// Registers a new callback method that is called when pulse from a specified MID is received.
         /// </summary>
-        /// <param name="MID">Hearteat device identifier.</param>
-        /// <param name="pulseHandler">Callback method with argument Pulse (e.g. "void MyCallback(string MID, int pulseId, Pulse pulse) { ... }"</param>
+        /// <param name="MID">Hearteat device identifier or null for all.</param>
+        /// <param name="pulseHandler">Callback method with signature "void Callback(string MID, int pulseId, Pulse pulse) { ... }"</param>
         public void RegisterPulseHandler(string MID, Action<string, int, Pulse> pulseHandler)
         {
             PulseSubscription pulseSubscription = new PulseSubscription(MID, 0, pulseHandler);
@@ -794,7 +899,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Removes all callback methods from a specified device identifier.
         /// </summary>
-        /// <param name="MID">Device identifier.</param>
+        /// <param name="MID">Device identifier or null for all.</param>
         public void UnregisterPulseHandler(string MID)
         {
             List<PulseSubscription> handlersToRemove = new List<PulseSubscription>();
@@ -810,6 +915,8 @@ namespace Masterloop.Plugin.Application
                 _pulseSubscriptions.Remove(handlersToRemove[i]);
             }
         }
+        #endregion
+
         #region InternalMethods
         private void Init()
         {
@@ -844,7 +951,7 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private bool DispatchObservation(string MID, int observationId, byte[] body, DataType dataType)
+        private bool DispatchObservation(string MID, int observationId, ReadOnlySpan<byte> body, DataType dataType)
         {
             string json = (dataType == DataType.Binary) ? null : Encoding.UTF8.GetString(body);
 
@@ -889,7 +996,7 @@ namespace Masterloop.Plugin.Application
                         ObservationSubscription<byte[]> binSubscription = _binarySubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
                         if (binSubscription != null)
                         {
-                            binSubscription.ObservationHandler(MID, observationId, body);
+                            binSubscription.ObservationHandler(MID, observationId, body.ToArray());
                             count++;
                         }
                         break;
@@ -1048,7 +1155,7 @@ namespace Masterloop.Plugin.Application
                     VirtualHost = _liveConnectionDetails.VirtualHost,
                     UserName = _liveConnectionDetails.Username,
                     Password = _liveConnectionDetails.Password,
-                    RequestedHeartbeat = _heartbeatInterval,
+                    RequestedHeartbeat = new TimeSpan(0, 0, _heartbeatInterval),
                     Port = _liveConnectionDetails.Port,
                     Ssl = ssl
                 };
@@ -1061,7 +1168,7 @@ namespace Masterloop.Plugin.Application
                     VirtualHost = _liveConnectionDetails.VirtualHost,
                     UserName = _liveConnectionDetails.Username,
                     Password = _liveConnectionDetails.Password,
-                    RequestedHeartbeat = _heartbeatInterval,
+                    RequestedHeartbeat = new TimeSpan(0, 0, _heartbeatInterval),
                     Port = _liveConnectionDetails.Port
                 };
             }
@@ -1076,6 +1183,7 @@ namespace Masterloop.Plugin.Application
                     {
                         _model = _connection.CreateModel();
                         _model.BasicQos(0, (ushort)this.PrefetchCount, false);
+                        _transactionOpen = false;
                         return _model != null && _model.IsOpen;
                     }
                 }
@@ -1091,7 +1199,7 @@ namespace Masterloop.Plugin.Application
         {
             if (UseAutomaticCallbacks)
             {
-                Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body, args.DeliveryTag);
+                Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body.Span, args.DeliveryTag);
             }
             else
             {
@@ -1099,8 +1207,9 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private bool Dispatch(string routingKey, IDictionary<string, object> headers, byte[] body, ulong deliveryTag)
+        private bool Dispatch(string routingKey, IDictionary<string, object> headers, ReadOnlySpan<byte> body, ulong deliveryTag)
         {
+            bool dispatched = false;
             string MID = MessageRoutingKey.ParseMID(routingKey);
 
             if (MID != null && MID.Length > 0 && body != null && body.Length > 0)
@@ -1108,18 +1217,12 @@ namespace Masterloop.Plugin.Application
                 if (MessageRoutingKey.IsDeviceObservation(routingKey))
                 {
                     int observationId = MessageRoutingKey.ParseObservationId(routingKey);
-                    if (observationId != 0 && _observationType.ContainsKey(observationId))
+                    if (observationId != 0)
                     {
-                        if (DispatchObservation(MID, observationId, body, _observationType[observationId]))
+                        // Evaluate if to dispatch as single observation callback.
+                        if (_observationType.ContainsKey(observationId))
                         {
-                            if (!UseAutomaticAcknowledgement)
-                            {
-                                lock (_modelLock)
-                                {
-                                    _model.BasicAck(deliveryTag, false);
-                                }
-                            }
-                            return true;
+                            dispatched = DispatchObservation(MID, observationId, body, _observationType[observationId]);
                         }
                     }
                 }
@@ -1130,17 +1233,7 @@ namespace Masterloop.Plugin.Application
                     {
                         string json = Encoding.UTF8.GetString(body);
                         DateTime timestamp = MessageRoutingKey.ParseCommandTimestamp(routingKey);
-                        if (DispatchCommand(MID, commandId, json, timestamp))
-                        {
-                            if (!UseAutomaticAcknowledgement)
-                            {
-                                lock (_modelLock)
-                                {
-                                    _model.BasicAck(deliveryTag, false);
-                                }
-                            }
-                            return true;
-                        }
+                        dispatched = DispatchCommand(MID, commandId, json, timestamp);
                     }
                 }
                 else if (MessageRoutingKey.IsDeviceCommandResponse(routingKey))
@@ -1150,17 +1243,7 @@ namespace Masterloop.Plugin.Application
                     {
                         string json = Encoding.UTF8.GetString(body);
                         DateTime timestamp = MessageRoutingKey.ParseCommandTimestamp(routingKey);
-                        if (DispatchCommandResponse(MID, commandId, json, timestamp))
-                        {
-                            if (!UseAutomaticAcknowledgement)
-                            {
-                                lock (_modelLock)
-                                {
-                                    _model.BasicAck(deliveryTag, false);
-                                }
-                            }
-                            return true;
-                        }
+                        dispatched = DispatchCommandResponse(MID, commandId, json, timestamp);
                     }
                 }
                 else if (MessageRoutingKey.IsDevicePulse(routingKey))
@@ -1168,32 +1251,12 @@ namespace Masterloop.Plugin.Application
                     string json = Encoding.UTF8.GetString(body);
                     if (MessageRoutingKey.IsDevicePulse(routingKey))
                     {
-                        if (DispatchPulse(MID, 0, json))
-                        {
-                            if (!UseAutomaticAcknowledgement)
-                            {
-                                lock (_modelLock)
-                                {
-                                    _model.BasicAck(deliveryTag, false);
-                                }
-                            }
-                            return true;
-                        }
+                        dispatched = DispatchPulse(MID, 0, json);
                     }
                     else if (MessageRoutingKey.IsApplicationPulse(routingKey))
                     {
                         int pulseId = MessageRoutingKey.ParsePulseId(routingKey);
-                        if (DispatchPulse(MID, pulseId, json))
-                        {
-                            if (!UseAutomaticAcknowledgement)
-                            {
-                                lock (_modelLock)
-                                {
-                                    _model.BasicAck(deliveryTag, false);
-                                }
-                            }
-                            return true;
-                        }
+                        dispatched = DispatchPulse(MID, pulseId, json);
                     }
                 }
             }
@@ -1201,10 +1264,18 @@ namespace Masterloop.Plugin.Application
             {
                 lock (_modelLock)
                 {
-                    _model.BasicNack(deliveryTag, false, false);
+                    if (dispatched)
+                    {
+                        _model.BasicAck(deliveryTag, false);
+                    }
+                    else
+                    {
+                        _model.BasicNack(deliveryTag, false, false);
+                    }
                 }
             }
-            return false;
+
+            return dispatched;
         }
 
         private bool OpenConnection()
@@ -1253,6 +1324,6 @@ namespace Masterloop.Plugin.Application
 
             return handlerCount;
         }
-        #endregion //InternalMethods
+        #endregion
     }
 }
