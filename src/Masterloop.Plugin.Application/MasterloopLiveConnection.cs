@@ -990,35 +990,38 @@ namespace Masterloop.Plugin.Application
 
             int count = 0;
             // Handle base observation subscriptions
-            ObservationSubscription<Observation> subscription = _observationSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-            if (subscription != null)
+            IEnumerable<ObservationSubscription<Observation>> subscriptions = _observationSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+            if (subscriptions.Any())
             {
-                switch (dataType)
+                foreach (ObservationSubscription<Observation> s in subscriptions) // Iterate outside of switch for readability
                 {
-                    case DataType.Boolean:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<BooleanObservation>(json));
-                        count++;
-                        break;
-                    case DataType.Double:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<DoubleObservation>(json));
-                        count++;
-                        break;
-                    case DataType.Integer:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<IntegerObservation>(json));
-                        count++;
-                        break;
-                    case DataType.Position:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<PositionObservation>(json));
-                        count++;
-                        break;
-                    case DataType.String:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
-                        count++;
-                        break;
-                    case DataType.Statistics:
-                        subscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
-                        count++;
-                        break;
+                    switch (dataType)
+                    {
+                        case DataType.Boolean:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<BooleanObservation>(json));
+                            count++;
+                            break;
+                        case DataType.Double:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<DoubleObservation>(json));
+                            count++;
+                            break;
+                        case DataType.Integer:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<IntegerObservation>(json));
+                            count++;
+                            break;
+                        case DataType.Position:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<PositionObservation>(json));
+                            count++;
+                            break;
+                        case DataType.String:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
+                            count++;
+                            break;
+                        case DataType.Statistics:
+                            s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
+                            count++;
+                            break;
+                    }
                 }
             }
             else  // Handle specific observation type subscriptions
@@ -1026,59 +1029,80 @@ namespace Masterloop.Plugin.Application
                 switch (dataType)
                 {
                     case DataType.Binary:
-                        ObservationSubscription<byte[]> binSubscription = _binarySubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (binSubscription != null)
+                        IEnumerable<ObservationSubscription<byte[]>> binSubscription = _binarySubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (binSubscription.Any())
                         {
-                            binSubscription.ObservationHandler(MID, observationId, body.ToArray());
-                            count++;
+                            foreach (ObservationSubscription<byte[]> s in binSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, body.ToArray());
+                                count++;                                
+                            }
                         }
                         break;
                     case DataType.Boolean:
-                        ObservationSubscription<BooleanObservation> boolSubscription = _booleanSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (boolSubscription != null)
+                        IEnumerable<ObservationSubscription<BooleanObservation>> boolSubscription = _booleanSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (boolSubscription.Any())
                         {
-                            boolSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<BooleanObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<BooleanObservation> s in boolSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<BooleanObservation>(json));
+                                count++;                                
+                            }
                         }
                         break;
                     case DataType.Double:
-                        ObservationSubscription<DoubleObservation> dblSubscription = _doubleSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (dblSubscription != null)
+                        IEnumerable<ObservationSubscription<DoubleObservation>> dblSubscription = _doubleSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (dblSubscription.Any())
                         {
-                            dblSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<DoubleObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<DoubleObservation> s in dblSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<DoubleObservation>(json));
+                                count++;                                
+                            }
                         }
                         break;
                     case DataType.Integer:
-                        ObservationSubscription<IntegerObservation> intSubscription = _integerSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (intSubscription != null)
+                        IEnumerable<ObservationSubscription<IntegerObservation>> intSubscription = _integerSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (intSubscription.Any())
                         {
-                            intSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<IntegerObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<IntegerObservation> s in intSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<IntegerObservation>(json));
+                                count++;                                
+                            }
                         }
                         break;
                     case DataType.Position:
-                        ObservationSubscription<PositionObservation> posSubscription = _positionSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (posSubscription != null)
+                        IEnumerable<ObservationSubscription<PositionObservation>> posSubscription = _positionSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (posSubscription.Any())
                         {
-                            posSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<PositionObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<PositionObservation> s in posSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<PositionObservation>(json));
+                                count++;                                
+                            }
                         }
                         break;
                     case DataType.String:
-                        ObservationSubscription<StringObservation> strSubscription = _stringSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (strSubscription != null)
+                        IEnumerable<ObservationSubscription<StringObservation>> strSubscription = _stringSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (strSubscription.Any())
                         {
-                            strSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<StringObservation> s in strSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StringObservation>(json));
+                                count++;
+                            }
                         }
                         break;
                     case DataType.Statistics:
-                        ObservationSubscription<StatisticsObservation> statSubscription = _statisticsSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (statSubscription != null)
+                        IEnumerable<ObservationSubscription<StatisticsObservation>> statSubscription = _statisticsSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
+                        if (statSubscription.Any())
                         {
-                            statSubscription.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
-                            count++;
+                            foreach (ObservationSubscription<StatisticsObservation> s in statSubscription)
+                            {
+                                s.ObservationHandler(MID, observationId, JsonConvert.DeserializeObject<StatisticsObservation>(json));
+                                count++;
+                            }
                         }
                         break;
                 }
@@ -1088,10 +1112,13 @@ namespace Masterloop.Plugin.Application
 
         private bool DispatchCommand(string MID, int commandId, string json, DateTime timestamp)
         {
-            CommandSubscription<Command> subscription = _commandSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
-            if (subscription != null)
+            IEnumerable<CommandSubscription<Command>> subscriptions = _commandSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
+            if (subscriptions.Any())
             {
-                subscription.CommandHandler(MID, JsonConvert.DeserializeObject<Command>(json));
+                foreach (CommandSubscription<Command> s in subscriptions)
+                {
+                    s.CommandHandler(MID, JsonConvert.DeserializeObject<Command>(json));                    
+                }
                 return true;
             }
             else
@@ -1102,10 +1129,13 @@ namespace Masterloop.Plugin.Application
 
         private bool DispatchCommandResponse(string MID, int commandId, string json, DateTime timestamp)
         {
-            CommandSubscription<CommandResponse> subscription = _commandResponseSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
-            if (subscription != null)
+            IEnumerable<CommandSubscription<CommandResponse>> subscriptions = _commandResponseSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
+            if (subscriptions.Any())
             {
-                subscription.CommandHandler(MID, JsonConvert.DeserializeObject<CommandResponse>(json));
+                foreach (CommandSubscription<CommandResponse> s in subscriptions)
+                {
+                    s.CommandHandler(MID, JsonConvert.DeserializeObject<CommandResponse>(json));   
+                }
                 return true;
             }
             else
@@ -1116,10 +1146,13 @@ namespace Masterloop.Plugin.Application
 
         private bool DispatchPulse(string MID, int pulseId, string json)
         {
-            PulseSubscription subscription = _pulseSubscriptions.Find(s => (s.MID == MID || s.MID == null) && s.PulseId == pulseId);
-            if (subscription != null)
+            IEnumerable<PulseSubscription> subscriptions = _pulseSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.PulseId == pulseId);
+            if (subscriptions.Any())
             {
-                subscription.PulseHandler(MID, pulseId, JsonConvert.DeserializeObject<Pulse>(json));
+                foreach (PulseSubscription s in subscriptions)
+                {
+                    s.PulseHandler(MID, pulseId, JsonConvert.DeserializeObject<Pulse>(json));                    
+                }
                 return true;
             }
             else
