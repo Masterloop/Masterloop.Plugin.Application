@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <Company>Masterloop</Company>
     <Product>Masterloop Application Plugin</Product>
     <AssemblyVersion>6.0.1.0</AssemblyVersion>
@@ -13,7 +13,6 @@
     <PackageReleaseNotes>Updated reference to Masterloop.Core.Types to support new data structures.</PackageReleaseNotes>
     <Description>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
-    <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <FileVersion>6.0.1.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageVersion>6.2.2</PackageVersion>
@@ -21,15 +20,18 @@
     <Summary>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
     <ReleaseVersion>6.2.2</ReleaseVersion>
+    <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
+    <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType></DebugType>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="RabbitMQ.Client" Version="5.1.2" />
-    <PackageReference Include="Masterloop.Core.Types" Version="6.2.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.2.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\submodules\Masterloop.Core.Types\src\Masterloop.Core.Types\Masterloop.Core.Types.csproj" />
   </ItemGroup>
 </Project>

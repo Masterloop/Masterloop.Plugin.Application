@@ -1,8 +1,8 @@
 ﻿// Masterloop auto-generated template export.
-// Created at: Mon, 29 Jun 2020 10:43:47 GMT
+// Created at: Fri, 08 Jan 2021 13:04:33 GMT
 // https://portal.masterloop.net/#/templates/details/view/MLTEST
 
-namespace Masterloop.Templates.MLTEST
+namespace Masterloop.MLTEST.Constants
 {
 	public class Observations
 	{
@@ -18,6 +18,8 @@ namespace Masterloop.Templates.MLTEST
 		public const int PositionTest = 5;
 		/// Test observation of type string [String]
 		public const int StringTest = 6;
+		/// Test observation of type statistics [undefined]
+		public const int StatisticsTest = 7;
 	}
 
 	public class Settings
@@ -32,8 +34,12 @@ namespace Masterloop.Templates.MLTEST
 		public const int SequenceNumber = 4;
 		/// Location [Position] 
 		public const int Location = 5;
-		/// IsDisabled [Boolean] 
-		public const int IsDisabled = 6;
+		/// IsEnabled [Boolean] 
+		public const int IsEnabled = 6;
+		/// PublishIntervalSeconds [Integer] 
+		public const int PublishIntervalSeconds = 7;
+		/// PulseIntervalSeconds [Integer] 
+		public const int PulseIntervalSeconds = 8;
 	}
 
 	public class Pulses
@@ -46,24 +52,14 @@ namespace Masterloop.Templates.MLTEST
 
 	public class Commands
 	{
-		/// Reboot charger
-		public const int Reboot = 1;
-
-		public static class RebootArguments
-		{
-			///Delay [Double]
-			public const int Delay = 0;
-			///Enter Safe Mode [Boolean]
-			public const int EnterSafeMode = 1;
-		}
+		/// Download device settings
+		public const int DownloadSettings = 1;
 
 		/// Multicommand
 		public const int Multi = 2;
 
 		public static class MultiArguments
 		{
-			///BoolVal [Boolean]
-			public const int BoolVal = 1;
 			///DblVal [Double]
 			public const int DblVal = 2;
 			///IntVal [Integer]
@@ -72,10 +68,24 @@ namespace Masterloop.Templates.MLTEST
 			public const int PosVal = 4;
 			///StrVal [String]
 			public const int StrVal = 5;
+			///StatVal [undefined]
+			public const int StatVal = 6;
 		}
 
 		/// Simple command
 		public const int Simple = 3;
+
+		/// Poll all observations
+		public const int PollAll = 4;
+
+		/// Poll single observation
+		public const int PollSingle = 5;
+
+		public static class PollSingleArguments
+		{
+			///ObsId [Integer]
+			public const int ObsId = 1;
+		}
 
 	}
 

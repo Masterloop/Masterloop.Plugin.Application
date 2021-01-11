@@ -29,7 +29,7 @@ namespace Masterloop.Plugin.Application
         private readonly string _username;
         private readonly string _password;
         private string _localAddress;
-        #endregion // PrivateMembers
+        #endregion
 
         #region Constants
         private const string _addressTemplates = "/api/templates";
@@ -49,7 +49,6 @@ namespace Masterloop.Plugin.Application
         private const string _addressDeviceCreateCommand = "/api/devices/{0}/commands/{1}";
         private const string _addressDeviceCommandQueue = "/api/devices/{0}/commands/queue";
         private const string _addressDeviceCommandHistory = "/api/devices/{0}/commands?fromTimestamp={1}&toTimestamp={2}";
-        private const string _addressToolsExportJobs = "/api/tools/exportjobs";
         private const string _addressDeviceSettings = "/api/devices/{0}/settings";
         private const string _addressDeviceSettingsExpanded = "/api/devices/{0}/settings/expanded";
         private const string _addressDeviceLatestActivityTimestamp = "/api/devices/{0}/activity/latest/timestamp";
@@ -70,19 +69,9 @@ namespace Masterloop.Plugin.Application
         private const string _MIME_TYPE_MASTERLOOP_DEVICES = "application/vnd.masterloop.devices";
 
         private const int _defaultTimeout = 30; // 30 seconds
-        #endregion // Constants
+        #endregion
 
-        #region Properties
-        /// <summary>
-        /// Last error message after an error, or null if no errors have occured.
-        /// </summary>
-        public string LastErrorMessage { get; set; }
-
-        /// <summary>
-        /// HTTP status code received from last API request.
-        /// </summary>
-        public System.Net.HttpStatusCode LastHttpStatusCode { get; set; }
-
+        #region Configuration
         /// <summary>
         /// Network timeout in seconds.
         /// </summary>
@@ -92,12 +81,24 @@ namespace Masterloop.Plugin.Application
         /// Use HTTP traffic compression (gzip).
         /// </summary>
         public bool UseCompression { get; set; }
-        #endregion  // Properties
 
         /// <summary>
         /// Application metadata used in server api interactions for improved tracability (optional).
         /// </summary>
         public ApplicationMetadata Metadata { get; set; }
+        #endregion
+
+        #region State
+        /// <summary>
+        /// Last error message after an error, or null if no errors have occured.
+        /// </summary>
+        public string LastErrorMessage { get; set; }
+
+        /// <summary>
+        /// HTTP status code received from last API request.
+        /// </summary>
+        public System.Net.HttpStatusCode LastHttpStatusCode { get; set; }
+        #endregion
 
         #region LifeCycle
         /// <summary>
@@ -639,7 +640,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Sends a command to a device.
         /// </summary>
-        /// <param name="observations">Observation packages of type ObservationPackage.</param>
+        /// <param name="command">Command object of type Command.</param>
         /// <returns>True if successful, False otherwise.</returns>
         public bool SendDeviceCommand(string MID, Command command)
         {
@@ -652,7 +653,7 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Sends a command to a device.
         /// </summary>
-        /// <param name="observations">Observation packages of type ObservationPackage.</param>
+        /// <param name="command">Command object of type Command.</param>
         /// <returns>True if successful, False otherwise.</returns>
         public async Task<bool> SendDeviceCommandAsync(string MID, Command command)
         {
@@ -663,9 +664,9 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Sends a command to a device.
+        /// Sends one or more command(s) to one or more device(s).
         /// </summary>
-        /// <param name="observations">Observation packages of type ObservationPackage.</param>
+        /// <param name="commandPackages">Command package of type CommandsPackage[].</param>
         /// <returns>True if successful, False otherwise.</returns>
         public bool SendMultipleDeviceCommand(CommandsPackage[] commandPackages)
         {
@@ -676,9 +677,9 @@ namespace Masterloop.Plugin.Application
         }
 
         /// <summary>
-        /// Sends a command to a device.
+        /// Sends one or more command(s) to one or more device(s).
         /// </summary>
-        /// <param name="observations">Observation packages of type ObservationPackage.</param>
+        /// <param name="commandPackages">Command package of type CommandsPackage[].</param>
         /// <returns>True if successful, False otherwise.</returns>
         public async Task<bool> SendMultipleDeviceCommandAsync(CommandsPackage[] commandPackages)
         {
@@ -734,50 +735,6 @@ namespace Masterloop.Plugin.Application
         {
             string url = string.Format(_addressDeviceCommandHistory, MID, from.ToString("o"), to.ToString("o"));
             return await GetDeserializedAsync<CommandHistory[]>(url);
-        }
-        #endregion
-
-        #region Export
-        /// <summary>
-        /// Get user export jobs.
-        /// </summary>
-        /// <returns>Array of objects with type according to observation data type.</returns>
-        public ExportJob[] GetExportJobs()
-        {
-            return GetDeserialized<ExportJob[]>(_addressToolsExportJobs);
-        }
-
-        /// <summary>
-        /// Get user export jobs.
-        /// </summary>
-        /// <returns>Array of objects with type according to observation data type.</returns>
-        public async Task<ExportJob[]> GetExportJobsAsync()
-        {
-            return await GetDeserializedAsync<ExportJob[]>(_addressToolsExportJobs);
-        }
-
-        /// <summary>
-        /// Creates and sends new export request.
-        /// </summary>
-        /// <param name="request">Export request.</param>
-        /// <returns>True if successful, false otherwise.</returns>
-        public bool SendExportRequest(ExportRequest request)
-        {
-            string body = JsonConvert.SerializeObject(request);
-            Tuple<bool, string> result = Post(_addressToolsExportJobs, body);
-            return result.Item1;
-        }
-
-        /// <summary>
-        /// Creates and sends new export request.
-        /// </summary>
-        /// <param name="request">Export request.</param>
-        /// <returns>True if successful, false otherwise.</returns>
-        public async Task<bool> SendExportRequestAsync(ExportRequest request)
-        {
-            string body = JsonConvert.SerializeObject(request);
-            Tuple<bool, string> result = await PostAsync(_addressToolsExportJobs, body);
-            return result.Item1;
         }
         #endregion
 
@@ -1124,7 +1081,7 @@ namespace Masterloop.Plugin.Application
         }
         #endregion
 
-        #region PrivateMethods
+        #region InternalMethods
         private Observation DeserializeObservation(string json, DataType dataType)
         {
             if (json != string.Empty)
@@ -1568,6 +1525,6 @@ namespace Masterloop.Plugin.Application
             }
             return null;
         }
-        #endregion //PrivateMethods
+        #endregion
     }
 }

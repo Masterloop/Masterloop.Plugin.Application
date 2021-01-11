@@ -37,10 +37,12 @@ namespace Masterloop.Plugin.Application.Tests
         {
             Command cmd = new Command()
             {
-                Id = Templates.MLTEST.Commands.Simple,
+                Id = MLTEST.Constants.Commands.PollSingle,
                 Timestamp = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
-                Arguments = null
+                Arguments = new CommandArgument[] {
+                    new CommandArgument() { Id = MLTEST.Constants.Commands.PollSingleArguments.ObsId, Value = "4" }
+                }
             };
             Assert.True(GetMCSAPI().SendDeviceCommand(GetMID(), cmd));
         }
@@ -50,10 +52,12 @@ namespace Masterloop.Plugin.Application.Tests
         {
             Command cmd = new Command()
             {
-                Id = Templates.MLTEST.Commands.Simple,
+                Id = MLTEST.Constants.Commands.PollSingle,
                 Timestamp = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
-                Arguments = null
+                Arguments = new CommandArgument[] {
+                    new CommandArgument() { Id = MLTEST.Constants.Commands.PollSingleArguments.ObsId, Value = "4" }
+                }
             };
             MasterloopServerConnection mcs = GetMCSAPI();
             mcs.Metadata = new ApplicationMetadata()
