@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
-    <ReleaseVersion>6.2.2</ReleaseVersion>
+    <ReleaseVersion>6.3.0-rc</ReleaseVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,8 +23,6 @@
     <ProjectReference Include="..\..\src\Masterloop.Plugin.Application\Masterloop.Plugin.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="appsettings.test.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Remove="appsettings.test.json" />
   </ItemGroup>
 </Project>
