@@ -91,6 +91,43 @@ namespace Masterloop.Plugin.Application.Tests
         }
 
         [Fact]
+        public void SendCommandWithResponse()
+        {
+            MasterloopLiveConnection live = GetMCSLiveTemporary();
+            live.UseAutomaticCallbacks = false;
+            live.Metadata = new ApplicationMetadata()
+            {
+                Application = "Masterloop.Plugin.Application.Tests",
+                Reference = "Live.SendCommandWithMetadata"
+            };
+            live.RegisterCommandResponseHandler(null, MLTEST.Constants.Commands.PollSingle, OnPollCommandResponseReceived);
+            Assert.NotNull(live);
+            Assert.False(live.IsConnected());
+            Assert.True(live.Connect());
+            Assert.True(live.IsConnected());
+            Command cmd = new Command()
+            {
+                Id = MLTEST.Constants.Commands.PollSingle,
+                Timestamp = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+                Arguments = new CommandArgument[] {
+                    new CommandArgument() { Id = MLTEST.Constants.Commands.PollSingleArguments.ObsId, Value = "4" }
+                }
+            };
+            Assert.True(live.SendCommand(GetMID(), cmd));
+            Thread.Sleep(5000);
+            live.Fetch();
+            Assert.False(string.IsNullOrEmpty(live.LastFetchedMessageRoutingKey));
+            Assert.False(string.IsNullOrEmpty(live.LastFetchedMessageBody));
+            live.Disconnect();
+            Assert.False(live.IsConnected());
+        }
+
+        private void OnPollCommandResponseReceived(string MID, CommandResponse cmdResponse)
+        {
+        }
+
+        [Fact]
         public void SendCommandWithTransactionCommit()
         {
             MasterloopLiveConnection live = GetMCSLiveTemporary();

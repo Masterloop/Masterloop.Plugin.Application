@@ -25,6 +25,8 @@ namespace Masterloop.Plugin.Application
         // State
         int QueueCount { get; }
         string LastErrorMessage { get; set; }
+        string LastFetchedMessageRoutingKey { get; }
+        string LastFetchedMessageBody { get; }
 
         /// Connection
         bool Connect();

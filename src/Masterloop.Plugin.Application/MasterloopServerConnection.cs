@@ -71,17 +71,7 @@ namespace Masterloop.Plugin.Application
         private const int _defaultTimeout = 30; // 30 seconds
         #endregion
 
-        #region Properties
-        /// <summary>
-        /// Last error message after an error, or null if no errors have occured.
-        /// </summary>
-        public string LastErrorMessage { get; set; }
-
-        /// <summary>
-        /// HTTP status code received from last API request.
-        /// </summary>
-        public System.Net.HttpStatusCode LastHttpStatusCode { get; set; }
-
+        #region Configuration
         /// <summary>
         /// Network timeout in seconds.
         /// </summary>
@@ -91,12 +81,24 @@ namespace Masterloop.Plugin.Application
         /// Use HTTP traffic compression (gzip).
         /// </summary>
         public bool UseCompression { get; set; }
-        #endregion
 
         /// <summary>
         /// Application metadata used in server api interactions for improved tracability (optional).
         /// </summary>
         public ApplicationMetadata Metadata { get; set; }
+        #endregion
+
+        #region State
+        /// <summary>
+        /// Last error message after an error, or null if no errors have occured.
+        /// </summary>
+        public string LastErrorMessage { get; set; }
+
+        /// <summary>
+        /// HTTP status code received from last API request.
+        /// </summary>
+        public System.Net.HttpStatusCode LastHttpStatusCode { get; set; }
+        #endregion
 
         #region LifeCycle
         /// <summary>

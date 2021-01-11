@@ -49,6 +49,8 @@ namespace Masterloop.Plugin.Application
         private ConcurrentQueue<BasicDeliverEventArgs> _queue;
         private string _localAddress;
         private bool _transactionOpen;
+        private string _lastFetchedMessageRoutingKey;
+        private string _lastFetchedMessageBody;
         #endregion
 
         #region Configuration
@@ -159,6 +161,28 @@ namespace Masterloop.Plugin.Application
         /// Last error message as text string in english.
         /// </summary>
         public string LastErrorMessage { get; set; }
+
+        /// <summary>
+        /// Last fetch message routing key as text string.
+        /// </summary>
+        public string LastFetchedMessageRoutingKey
+        {
+            get
+            {
+                return _lastFetchedMessageRoutingKey;
+            }
+        }
+
+        /// <summary>
+        /// Last fetched message body as text string.
+        /// </summary>
+        public string LastFetchedMessageBody
+        {
+            get
+            {
+                return _lastFetchedMessageBody;
+            }
+        }
         #endregion
 
         #region LifeCycle
@@ -433,6 +457,9 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if message was received, false otherwise.</returns>
         public bool Fetch()
         {
+            _lastFetchedMessageRoutingKey = null;
+            _lastFetchedMessageBody = null;
+
             // Queue is empty, nothing to fetch
             if (_queue.IsEmpty)
             {
@@ -440,9 +467,15 @@ namespace Masterloop.Plugin.Application
             }
 
             // Use concurrent dequeueing, return dispatch state if successfull
-            if (_queue.TryDequeue(out BasicDeliverEventArgs args))
+            if (_queue.TryDequeue(out BasicDeliverEventArgs message))
             {
-                return Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body.Span, args.DeliveryTag);
+                try
+                {
+                    _lastFetchedMessageRoutingKey = message.RoutingKey;
+                    _lastFetchedMessageBody = Encoding.UTF8.GetString(message.Body.Span);
+                }
+                catch (Exception) { }
+                return Dispatch(message.RoutingKey, GetMessageHeader(message), message.Body.Span, message.DeliveryTag);
             }
 
             // Failed to dequeue, probably concurrent dequeue and empty queue, so return false
