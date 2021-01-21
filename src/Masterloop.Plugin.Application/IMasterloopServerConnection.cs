@@ -41,8 +41,8 @@ namespace Masterloop.Plugin.Application
         Task<SecureDetailedDevice> GetSecureDeviceDetailsAsync(string MID);
         DeviceTemplate GetDeviceTemplate(string MID);
         Task<DeviceTemplate> GetDeviceTemplateAsync(string MID);
-        DetailedDevice CreateDevice(Device newDevice);
-        Task<DetailedDevice> CreateDeviceAsync(Device newDevice);
+        DetailedDevice CreateDevice(NewDevice newDevice);
+        Task<DetailedDevice> CreateDeviceAsync(NewDevice newDevice);
         bool DeleteDevice(string MID);
         Task<bool> DeleteDeviceAsync(string MID);
         DateTime? GetLatestLoginTimestamp(string MID);

@@ -354,7 +354,7 @@ namespace Masterloop.Plugin.Application
         /// </summary>
         /// <param name="newDevice">Structure for new device request.</param>
         /// <returns>DetailedDevice object for newly created device.</returns>
-        public DetailedDevice CreateDevice(Device newDevice)
+        public DetailedDevice CreateDevice(NewDevice newDevice)
         {
             string body = JsonConvert.SerializeObject(newDevice);
             return PostDeserialized<DetailedDevice>(_addressDevices, body);
@@ -365,7 +365,7 @@ namespace Masterloop.Plugin.Application
         /// </summary>
         /// <param name="newDevice">Structure for new device request.</param>
         /// <returns>DetailedDevice object for newly created device.</returns>
-        public async Task<DetailedDevice> CreateDeviceAsync(Device newDevice)
+        public async Task<DetailedDevice> CreateDeviceAsync(NewDevice newDevice)
         {
             string body = JsonConvert.SerializeObject(newDevice);
             return await PostDeserializedAsync<DetailedDevice>(_addressDevices, body);

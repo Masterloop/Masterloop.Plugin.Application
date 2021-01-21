@@ -32,6 +32,21 @@ namespace Masterloop.Plugin.Application.Tests
             Assert.Contains(GetMID(), devices.Select(d => d.MID));
         }
 
+        /*[Fact]
+        public void CreateDevice()
+        {
+            NewDevice newDevice = new NewDevice()
+            {
+                TemplateId = GetTID(),
+                Name = $"CreateDevice on {DateTime.UtcNow:o}",
+                Description = $"CreateDevice on {DateTime.UtcNow:o}",
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
+            DetailedDevice detailedDevice = GetMCSAPI().CreateDevice(newDevice);
+            Assert.True(detailedDevice != null);
+        }*/
+
         [Fact]
         public void SendDeviceCommand()
         {

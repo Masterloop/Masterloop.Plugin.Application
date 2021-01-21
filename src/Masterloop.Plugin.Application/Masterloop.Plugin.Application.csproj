@@ -10,17 +10,17 @@
     <Authors>Masterloop</Authors>
     <PackageTags>IoT Masterloop Application Plugin</PackageTags>
     <Copyright>Copyright (c) 2013 Masterloop</Copyright>
-    <PackageReleaseNotes>Bugfix related to subscriptions for multiple messages of the same primary key, exposure of fetched message, support for transactions in live publishing.</PackageReleaseNotes>
+    <PackageReleaseNotes>Breaking change: CreateDevice now uses new NewDevice class for creating new device. PreSharedKey, CreatedOn and UpdatedOn are optional properties that will be used if they have non-null values. Otherwise these 3 properties will be assigned values server-side.</PackageReleaseNotes>
     <Description>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
     <FileVersion>6.0.1.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>6.3.0-rc</PackageVersion>
+    <PackageVersion>6.3.1-rc</PackageVersion>
     <Owners>jhskailand</Owners>
     <Summary>Plugin to connect .NET/Mono/Core based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <ReleaseVersion>6.3.0-rc</ReleaseVersion>
+    <ReleaseVersion>6.3.1-rc</ReleaseVersion>
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
   </PropertyGroup>
@@ -30,6 +30,6 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="RabbitMQ.Client" Version="6.2.1" />
-    <PackageReference Include="Masterloop.Core.Types" Version="6.2.0" />
+    <PackageReference Include="Masterloop.Core.Types" Version="6.3.0" />
   </ItemGroup>
 </Project>
