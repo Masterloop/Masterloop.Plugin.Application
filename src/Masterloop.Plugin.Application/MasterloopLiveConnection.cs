@@ -22,6 +22,28 @@ namespace Masterloop.Plugin.Application
 {
     public class MasterloopLiveConnection : IMasterloopLiveConnection
     {
+        
+        /// <summary>
+        /// Local minimal class wrapper for RMQ BasicDeliverEventArgs that creates a buffered copy of the received
+        /// byte array.
+        /// </summary>
+        class BufferedDeliverEventArgs: BasicDeliverEventArgs
+        {
+            public BufferedDeliverEventArgs(BasicDeliverEventArgs source)
+            {
+                ConsumerTag = source.ConsumerTag;
+                DeliveryTag = source.DeliveryTag;
+                Redelivered = source.Redelivered;
+                Exchange = source.Exchange;
+                RoutingKey = source.RoutingKey;
+                BasicProperties = source.BasicProperties;
+                Body = source.Body;
+                BodyBuffer = source.Body.ToArray();
+            }
+            
+            public byte[] BodyBuffer;
+        }
+        
         #region PrivateMembers
         private MasterloopServerConnection _apiServerConnection;
         private LiveConnectionDetails _liveConnectionDetails;
@@ -46,7 +68,7 @@ namespace Masterloop.Plugin.Application
         private List<LiveAppRequest> _liveRequests;
         private readonly object _modelLock;
         private Dictionary<int, DataType> _observationType;
-        private ConcurrentQueue<BasicDeliverEventArgs> _queue;
+        private ConcurrentQueue<BufferedDeliverEventArgs> _queue;
         private string _localAddress;
         private bool _transactionOpen;
         private string _lastFetchedMessageRoutingKey;
@@ -199,7 +221,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
-            _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
+            _queue = new ConcurrentQueue<BufferedDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
             _transactionOpen = false;
 
@@ -223,7 +245,7 @@ namespace Masterloop.Plugin.Application
             Init();
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
-            _queue = new ConcurrentQueue<BasicDeliverEventArgs>();
+            _queue = new ConcurrentQueue<BufferedDeliverEventArgs>();
             _localAddress = GetLocalIPAddress();
             _transactionOpen = false;
 
@@ -467,7 +489,7 @@ namespace Masterloop.Plugin.Application
             }
 
             // Use concurrent dequeueing, return dispatch state if successfull
-            if (_queue.TryDequeue(out BasicDeliverEventArgs message))
+            if (_queue.TryDequeue(out BufferedDeliverEventArgs message))
             {
                 try
                 {
@@ -475,7 +497,7 @@ namespace Masterloop.Plugin.Application
                     _lastFetchedMessageBody = Encoding.UTF8.GetString(message.Body.Span);
                 }
                 catch (Exception) { }
-                return Dispatch(message.RoutingKey, GetMessageHeader(message), message.Body.Span, message.DeliveryTag);
+                return Dispatch(message.RoutingKey, GetMessageHeader(message), message.BodyBuffer, message.DeliveryTag);
             }
 
             // Failed to dequeue, probably concurrent dequeue and empty queue, so return false
@@ -1265,15 +1287,15 @@ namespace Masterloop.Plugin.Application
         {
             if (UseAutomaticCallbacks)
             {
-                Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body.Span, args.DeliveryTag);
+                Dispatch(args.RoutingKey, GetMessageHeader(args), args.Body.Span.ToArray(), args.DeliveryTag);
             }
             else
             {
-                _queue.Enqueue(args);
+                _queue.Enqueue(new BufferedDeliverEventArgs(args));
             }
         }
 
-        private bool Dispatch(string routingKey, IDictionary<string, object> headers, ReadOnlySpan<byte> body, ulong deliveryTag)
+        private bool Dispatch(string routingKey, IDictionary<string, object> headers, byte[] body, ulong deliveryTag)
         {
             bool dispatched = false;
             string MID = MessageRoutingKey.ParseMID(routingKey);
