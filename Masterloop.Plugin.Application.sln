@@ -19,7 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{537ED9AA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Masterloop.Plugin.Application.Tests", "tests\Masterloop.Plugin.Application.Tests\Masterloop.Plugin.Application.Tests.csproj", "{DF108B47-5E80-4CC4-A87D-2FA41B5783AC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Masterloop.Plugin.Application.LongTests", "tests\Masterloop.Plugin.Application.LongTests\Masterloop.Plugin.Application.LongTests.csproj", "{93A2373E-47DA-47C0-9714-042AE37268CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Masterloop.Plugin.Application.LongTests", "tests\Masterloop.Plugin.Application.LongTests\Masterloop.Plugin.Application.LongTests.csproj", "{738FBE45-CEB4-4232-84D2-19356176FB3B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,18 +39,18 @@ Global
 		{DF108B47-5E80-4CC4-A87D-2FA41B5783AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DF108B47-5E80-4CC4-A87D-2FA41B5783AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DF108B47-5E80-4CC4-A87D-2FA41B5783AC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{93A2373E-47DA-47C0-9714-042AE37268CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{93A2373E-47DA-47C0-9714-042AE37268CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{93A2373E-47DA-47C0-9714-042AE37268CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{93A2373E-47DA-47C0-9714-042AE37268CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{738FBE45-CEB4-4232-84D2-19356176FB3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{738FBE45-CEB4-4232-84D2-19356176FB3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{738FBE45-CEB4-4232-84D2-19356176FB3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{738FBE45-CEB4-4232-84D2-19356176FB3B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{DEDBC216-7FCB-404C-8F21-9EC54BCFD823} = {610369E7-0EA7-40AF-BFAD-700068BAF04F}
 		{603AEB9C-5201-4EC2-8A57-05DC88210132} = {50FD4255-A765-4553-8E4F-90A3A91EED0B}
 		{DF108B47-5E80-4CC4-A87D-2FA41B5783AC} = {537ED9AA-74DB-427C-95D3-81BD84563C3A}
-		{93A2373E-47DA-47C0-9714-042AE37268CB} = {537ED9AA-74DB-427C-95D3-81BD84563C3A}
+		{738FBE45-CEB4-4232-84D2-19356176FB3B} = {537ED9AA-74DB-427C-95D3-81BD84563C3A}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		version = 6.3.1-rc
+		version = 6.3.2-rc
 	EndGlobalSection
 EndGlobal
