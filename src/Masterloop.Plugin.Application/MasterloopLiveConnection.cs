@@ -185,7 +185,7 @@ namespace Masterloop.Plugin.Application
         public string LastErrorMessage { get; set; }
 
         /// <summary>
-        /// Last fetch message routing key as text string.
+        /// Last fetched message routing key as text string.
         /// </summary>
         public string LastFetchedMessageRoutingKey
         {
@@ -496,7 +496,10 @@ namespace Masterloop.Plugin.Application
                     _lastFetchedMessageRoutingKey = message.RoutingKey;
                     _lastFetchedMessageBody = Encoding.UTF8.GetString(message.Body.Span);
                 }
-                catch (Exception) { }
+                catch (Exception e)
+                {
+                    LastErrorMessage = e.Message;
+                }
                 return Dispatch(message.RoutingKey, GetMessageHeader(message), message.BodyBuffer, message.DeliveryTag);
             }
 

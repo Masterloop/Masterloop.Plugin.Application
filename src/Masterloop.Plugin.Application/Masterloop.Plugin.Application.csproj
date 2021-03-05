@@ -23,6 +23,7 @@
     <ReleaseVersion>6.3.1-rc</ReleaseVersion>
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
+    <Configurations>Release;Debug</Configurations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType></DebugType>
