@@ -1190,16 +1190,24 @@ namespace Masterloop.Plugin.Application
 
         private string GetLocalIPAddress()
         {
-            if (NetworkInterface.GetIsNetworkAvailable())
+            try
             {
-                var host = Dns.GetHostEntry(Dns.GetHostName());
-                foreach (var ip in host.AddressList)
+
+                if (NetworkInterface.GetIsNetworkAvailable())
                 {
-                    if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    var host = Dns.GetHostEntry(Dns.GetHostName());
+                    foreach (var ip in host.AddressList)
                     {
-                        return ip.ToString();
+                        if (ip.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            return ip.ToString();
+                        }
                     }
                 }
+            }
+            catch (NetworkInformationException)
+            {
+                // Running on platform where LocalIP is not available
             }
             return null;
         }
