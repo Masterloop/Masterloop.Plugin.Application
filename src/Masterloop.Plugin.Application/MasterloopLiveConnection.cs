@@ -494,7 +494,7 @@ namespace Masterloop.Plugin.Application
                 try
                 {
                     _lastFetchedMessageRoutingKey = message.RoutingKey;
-                    _lastFetchedMessageBody = Encoding.UTF8.GetString(message.Body.Span);
+                    _lastFetchedMessageBody = Encoding.UTF8.GetString(message.BodyBuffer);
                 }
                 catch (Exception e)
                 {
@@ -1009,10 +1009,8 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private bool DispatchObservation(string MID, int observationId, ReadOnlySpan<byte> body, DataType dataType)
+        private bool DispatchObservation(string MID, int observationId, string json, DataType dataType)
         {
-            string json = (dataType == DataType.Binary) ? null : Encoding.UTF8.GetString(body);
-
             int count = 0;
             // Handle base observation subscriptions
             IEnumerable<ObservationSubscription<Observation>> subscriptions = _observationSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
@@ -1053,17 +1051,6 @@ namespace Masterloop.Plugin.Application
             {
                 switch (dataType)
                 {
-                    case DataType.Binary:
-                        IEnumerable<ObservationSubscription<byte[]>> binSubscription = _binarySubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
-                        if (binSubscription.Any())
-                        {
-                            foreach (ObservationSubscription<byte[]> s in binSubscription)
-                            {
-                                s.ObservationHandler(MID, observationId, body.ToArray());
-                                count++;                                
-                            }
-                        }
-                        break;
                     case DataType.Boolean:
                         IEnumerable<ObservationSubscription<BooleanObservation>> boolSubscription = _booleanSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.ObservationId == observationId);
                         if (boolSubscription.Any())
@@ -1310,10 +1297,11 @@ namespace Masterloop.Plugin.Application
                     int observationId = MessageRoutingKey.ParseObservationId(routingKey);
                     if (observationId != 0)
                     {
+                        string json = Encoding.UTF8.GetString(body);
                         // Evaluate if to dispatch as single observation callback.
                         if (_observationType.ContainsKey(observationId))
                         {
-                            dispatched = DispatchObservation(MID, observationId, body, _observationType[observationId]);
+                            dispatched = DispatchObservation(MID, observationId, json, _observationType[observationId]);
                         }
                     }
                 }
