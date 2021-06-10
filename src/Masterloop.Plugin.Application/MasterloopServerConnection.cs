@@ -58,6 +58,7 @@ namespace Masterloop.Plugin.Application
         private const string _addressToolsLiveConnectPersistent = "/api/tools/liveconnect/persistent";
         private const string _addressToolsLiveConnectPersistentIdentified = "/api/tools/liveconnect/persistent/{0}";
         private const string _addressToolsLiveConnectPersistentAddDevice = "/api/tools/liveconnect/persistent/{0}/devices";
+        private const string _addressToolsLiveConnectPersistentCreateWhitelist = "/api/tools/liveconnect/persistent/{0}/whitelist";
         private const string _addressToolsLiveConnectPersistentRemoveDevice = "/api/tools/liveconnect/persistent/{0}/devices/{1}";
         private const string _addressDevicePulsePeriod = "/api/devices/{0}/pulse/{1}?fromTimestamp={2}&toTimestamp={3}";
         private const string _addressDevicePulsePeriodCurrent = "/api/devices/{0}/pulse/{1}/current";
@@ -988,6 +989,34 @@ namespace Masterloop.Plugin.Application
             Tuple<bool, string> result = await DeleteAsync(url);
             return result.Item1;
         }
+
+        public string[] GetPersistentSubscriptionWhitelist(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
+            return GetDeserialized<string[]>(url);
+        }
+
+        public async Task<string[]> GetPersistentSubscriptionWhitelistAsync(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentAddDevice, subscriptionKey);
+            return await GetDeserializedAsync<string[]>(url);
+        }
+
+        public bool CreatePersistentSubscriptionWhitelist(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentCreateWhitelist, subscriptionKey);
+            Tuple<bool, string> result = Post(url, string.Empty);
+            return result.Item1;
+        }
+
+        public async Task<bool> CreatePersistentSubscriptionWhitelistAsync(string subscriptionKey)
+        {
+            string url = string.Format(_addressToolsLiveConnectPersistentCreateWhitelist, subscriptionKey);
+            Tuple<bool, string> result = await PostAsync(url, string.Empty);
+            return result.Item1;
+        }
+
+
         #endregion
 
         #region Pulse

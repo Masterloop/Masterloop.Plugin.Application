@@ -82,5 +82,40 @@ namespace Masterloop.Plugin.Application.Tests
             };
             Assert.True(mcs.SendDeviceCommand(GetMID(), cmd));
         }
+
+        [Fact]
+        public void GetNonExistingPersistentWhitelist()
+        {
+            var devices = GetMCSAPI().GetPersistentSubscriptionWhitelist(GetPersistentSubscriptionKey());
+            Assert.Null(devices);
+        }
+
+        [Fact]
+        public async void GetNonExistingPersistentWhitelistAsync()
+        {
+            var devices = await GetMCSAPI().GetPersistentSubscriptionWhitelistAsync(GetPersistentSubscriptionKey());
+            Assert.Null(devices);
+        }
+
+        [Fact]
+        public void GetExistingPersistentWhitelist()
+        {
+            var devices = GetMCSAPI().GetPersistentSubscriptionWhitelist(GetPersistentSubscriptionKey());
+            Assert.True(devices.Length == 1);
+        }
+
+        [Fact]
+        public void CreatePersistentWhitelist()
+        {
+            var result = GetMCSAPI().CreatePersistentSubscriptionWhitelist(GetPersistentSubscriptionKey());
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async void CreatePersistentWhitelistAsync()
+        {
+            var result = await GetMCSAPI().CreatePersistentSubscriptionWhitelistAsync(GetPersistentSubscriptionKey());
+            Assert.True(result);
+        }
     }
 }

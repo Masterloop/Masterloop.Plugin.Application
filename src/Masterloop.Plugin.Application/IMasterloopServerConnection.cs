@@ -95,6 +95,10 @@ namespace Masterloop.Plugin.Application
         Task<bool> RemoveLivePersistentSubscriptionDeviceAsync(string subscriptionKey, string mid);
         bool DeleteLivePersistentSubscription(string subscriptionKey);
         Task<bool> DeleteLivePersistentSubscriptionAsync(string subscriptionKey);
+        string[] GetPersistentSubscriptionWhitelist(string subscriptionKey);
+        Task<string[]> GetPersistentSubscriptionWhitelistAsync(string subscriptionKey);
+        bool CreatePersistentSubscriptionWhitelist(string subscriptionKey);
+        Task<bool> CreatePersistentSubscriptionWhitelistAsync(string subscriptionKey);
 
         // Pulse
         PulsePeriod[] GetPulsePeriod(string MID, int pulseId, DateTime from, DateTime to);
