@@ -48,8 +48,10 @@ namespace Masterloop.Plugin.Application
         private MasterloopServerConnection _apiServerConnection;
         private LiveConnectionDetails _liveConnectionDetails;
         private ConnectionFactory _connectionFactory;
-        private IConnection _connection;
-        private IModel _model;
+        private IConnection _subConnection;
+        private IModel _subModel;
+        private IConnection _pubConnection;
+        private IModel _pubModel;
         private EventingBasicConsumer _consumer;
         private string _consumerTag;
         private List<ObservationSubscription<Observation>> _observationSubscriptions;
@@ -66,7 +68,8 @@ namespace Masterloop.Plugin.Application
         private ushort _heartbeatInterval = 60;
         private bool _disposed;
         private List<LiveAppRequest> _liveRequests;
-        private readonly object _modelLock;
+        private readonly object _subModelLock;
+        private readonly object _pubModelLock;
         private Dictionary<int, DataType> _observationType;
         private ConcurrentQueue<BufferedDeliverEventArgs> _queue;
         private string _localAddress;
@@ -217,7 +220,8 @@ namespace Masterloop.Plugin.Application
         /// <param name="useEncryption">True if using encryption, False if not using encryption.</param>
         public MasterloopLiveConnection(string hostName, string username, string password, bool useEncryption)
         {
-            _modelLock = new object();
+            _subModelLock = new object();
+            _pubModelLock = new object();
             Init();
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
@@ -241,7 +245,8 @@ namespace Masterloop.Plugin.Application
         /// <param name="liveConnectionDetails">Live message server connection details.</param>
         public MasterloopLiveConnection(LiveConnectionDetails liveConnectionDetails)
         {
-            _modelLock = new object();
+            _subModelLock = new object();
+            _pubModelLock = new object();
             Init();
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
@@ -360,38 +365,73 @@ namespace Masterloop.Plugin.Application
                 }
             }
 
-            if (_model != null)
+            if (_subModel != null)
             {
-                lock (_modelLock)
+                lock (_subModelLock)
                 {
-                    if (_model.IsOpen)
+                    if (_subModel.IsOpen)
                     {
                         try
                         {
-                            _model.Close(200, "Goodbye");
+                            _subModel.Close(200, "Goodbye");
                         }
                         catch (Exception) { }
                     }
-                    _model.Dispose();
-                    _model = null;
+                    _subModel.Dispose();
+                    _subModel = null;
                     _transactionOpen = false;
                 }
             }
 
-            if (_connection != null)
+            if (_subConnection != null)
             {
-                lock (_connection)
+                lock (_subConnection)
                 {
-                    if (_connection.IsOpen)
+                    if (_subConnection.IsOpen)
                     {
                         try
                         {
-                            _connection.Close();
+                            _subConnection.Close();
                         }
                         catch (Exception) { }
                     }
-                    _connection.Dispose();
-                    _connection = null;
+                    _subConnection.Dispose();
+                    _subConnection = null;
+                }
+            }
+
+            if (_pubModel != null)
+            {
+                lock (_pubModelLock)
+                {
+                    if (_pubModel.IsOpen)
+                    {
+                        try
+                        {
+                            _pubModel.Close(200, "Goodbye");
+                        }
+                        catch (Exception) { }
+                    }
+                    _pubModel.Dispose();
+                    _pubModel = null;
+                    _transactionOpen = false;
+                }
+            }
+
+            if (_pubConnection != null)
+            {
+                lock (_pubConnection)
+                {
+                    if (_pubConnection.IsOpen)
+                    {
+                        try
+                        {
+                            _pubConnection.Close();
+                        }
+                        catch (Exception) { }
+                    }
+                    _pubConnection.Dispose();
+                    _pubConnection = null;
                 }
             }
 
@@ -411,13 +451,24 @@ namespace Masterloop.Plugin.Application
         public bool IsConnected()
         {
             if (_connectionFactory == null) return false;
-            if (_connection == null) return false;
-            if (!_connection.IsOpen) return false;
-            if (_model == null) return false;
-            lock (_modelLock)
+
+            if (_subConnection == null) return false;
+            if (!_subConnection.IsOpen) return false;
+            if (_subModel == null) return false;
+            lock (_subModelLock)
             {
-                return _model.IsOpen;
+                if (!_subModel.IsOpen) return false;
             }
+
+            if (_pubConnection == null) return false;
+            if (!_pubConnection.IsOpen) return false;
+            if (_pubModel == null) return false;
+            lock (_pubModelLock)
+            {
+                if (!_pubModel.IsOpen) return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -429,12 +480,12 @@ namespace Masterloop.Plugin.Application
             bool success = false;
             if (_consumer != null && _consumerTag != string.Empty)
             {
-                lock (_model)
+                lock (_subModel)
                 {
                     try
                     {
                         _consumer.Received -= ConsumerReceived;
-                        _model.BasicCancel(_consumerTag);
+                        _subModel.BasicCancel(_consumerTag);
                         _consumerTag = string.Empty;
                         success = true;
                     }
@@ -456,12 +507,12 @@ namespace Masterloop.Plugin.Application
             bool success = false;
             if (_consumer != null && _consumerTag != string.Empty)
             {
-                lock (_model)
+                lock (_subModel)
                 {
                     try
                     {
                         _consumer.Received += ConsumerReceived;
-                        _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, false, _consumer);
+                        _consumerTag = _subModel.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
                         success = true;
                     }
                     catch (Exception e)
@@ -541,9 +592,9 @@ namespace Masterloop.Plugin.Application
                 byte[] body = Encoding.UTF8.GetBytes(json);
                 try
                 {
-                    lock (_modelLock)
+                    lock (_pubModelLock)
                     {
-                        _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, true, properties, body);
+                        _pubModel.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, true, properties, body);
                     }
                     return true;
                 }
@@ -594,9 +645,9 @@ namespace Masterloop.Plugin.Application
                 byte[] body = Encoding.UTF8.GetBytes(json);
                 try
                 {
-                    lock (_modelLock)
+                    lock (_pubModelLock)
                     {
-                        _model.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, false, properties, body);
+                        _pubModel.BasicPublish(_liveConnectionDetails.ExchangeName, routingKey, false, properties, body);
                     }
                 }
                 catch (Exception e)
@@ -642,15 +693,11 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if successful, False otherwise.</returns>
         public bool PublishBegin()
         {
-            if (UseAutomaticCallbacks)
-            {
-                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
-            }
-            lock (_modelLock)
+            lock (_pubModelLock)
             {
                 try
                 {
-                    _model.TxSelect();
+                    _pubModel.TxSelect();
                     _transactionOpen = true;
                     return true;
                 }
@@ -668,15 +715,11 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if successful, False otherwise.</returns>
         public bool PublishCommit()
         {
-            if (UseAutomaticCallbacks)
-            {
-                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
-            }
-            lock (_modelLock)
+            lock (_pubModelLock)
             {
                 try
                 {
-                    _model.TxCommit();
+                    _pubModel.TxCommit();
                     _transactionOpen = false;
                     return true;
                 }
@@ -694,15 +737,11 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if successful, False otherwise.</returns>
         public bool PublishRollback()
         {
-            if (UseAutomaticCallbacks)
-            {
-                throw new ArgumentException("Unable to use transactions if UseAutomaticCallbacks is set to true.");
-            }
-            lock (_modelLock)
+            lock (_pubModelLock)
             {
                 try
                 {
-                    _model.TxRollback();
+                    _pubModel.TxRollback();
                     _transactionOpen = false;
                     return true;
                 }
@@ -1175,13 +1214,10 @@ namespace Masterloop.Plugin.Application
 
         private IBasicProperties GetMessageProperties(byte deliveryMode)
         {
-            lock (_modelLock)
-            {
-                IBasicProperties properties = _model.CreateBasicProperties();
-                properties.ContentType = "application/json";
-                properties.DeliveryMode = deliveryMode;
-                return properties;
-            }
+            IBasicProperties properties = _subModel.CreateBasicProperties();
+            properties.ContentType = "application/json";
+            properties.DeliveryMode = deliveryMode;
+            return properties;
         }
 
         private void AppendMetadata(IBasicProperties properties)
@@ -1261,24 +1297,44 @@ namespace Masterloop.Plugin.Application
 
             try
             {
-                _connection = _connectionFactory.CreateConnection();
-
-                if (_connection != null && _connection.IsOpen)
+                _subConnection = _connectionFactory.CreateConnection();
+                if (_subConnection != null && _subConnection.IsOpen)
                 {
-                    lock (_modelLock)
+                    lock (_subModelLock)
                     {
-                        _model = _connection.CreateModel();
-                        _model.BasicQos(0, (ushort)this.PrefetchCount, false);
-                        _transactionOpen = false;
-                        return _model != null && _model.IsOpen;
+                        _subModel = _subConnection.CreateModel();
+                        _subModel.BasicQos(0, (ushort)this.PrefetchCount, false);
+                        if (_subModel == null || !_subModel.IsOpen) return false;
                     }
                 }
+                else
+                {
+                    return false;
+                }
+
+                _pubConnection = _connectionFactory.CreateConnection();
+                if (_pubConnection != null && _pubConnection.IsOpen)
+                {
+                    lock (_pubModelLock)
+                    {
+                        _pubModel = _pubConnection.CreateModel();
+                        _pubModel.BasicQos(0, (ushort)this.PrefetchCount, false);
+                        _transactionOpen = false;
+                        if (_pubModel == null || !_pubModel.IsOpen) return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+
+                return true;
             }
             catch (Exception e)
             {
                 LastErrorMessage = e.Message;
+                return false;
             }
-            return false;  // Failed to create connection
         }
 
         private void ConsumerReceived(object sender, BasicDeliverEventArgs args)
@@ -1349,15 +1405,15 @@ namespace Masterloop.Plugin.Application
             }
             if (!UseAutomaticAcknowledgement)
             {
-                lock (_modelLock)
+                lock (_subModelLock)
                 {
                     if (dispatched)
                     {
-                        _model.BasicAck(deliveryTag, false);
+                        _subModel.BasicAck(deliveryTag, false);
                     }
                     else
                     {
-                        _model.BasicNack(deliveryTag, false, false);
+                        _subModel.BasicNack(deliveryTag, false, false);
                     }
                 }
             }
@@ -1372,13 +1428,13 @@ namespace Masterloop.Plugin.Application
                 if (Open())
                 {
                     // Enable automatic callback handler if specified.
-                    lock (_modelLock)
+                    lock (_subModelLock)
                     {
-                        _consumer = new EventingBasicConsumer(_model);
+                        _consumer = new EventingBasicConsumer(_subModel);
                         _consumer.Received += ConsumerReceived;
                         try
                         {
-                            _consumerTag = _model.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
+                            _consumerTag = _subModel.BasicConsume(_liveConnectionDetails.QueueName, UseAutomaticAcknowledgement, _consumer);
                         }
                         catch (Exception)
                         {
