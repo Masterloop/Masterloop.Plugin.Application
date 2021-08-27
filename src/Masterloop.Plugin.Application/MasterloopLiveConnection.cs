@@ -76,6 +76,8 @@ namespace Masterloop.Plugin.Application
         private bool _transactionOpen;
         private string _lastFetchedMessageRoutingKey;
         private string _lastFetchedMessageBody;
+        private ulong? _lastDispatchedDeliveryTag;
+        private DateTime _nextAcknowledgement = DateTime.UtcNow;
         #endregion
 
         #region Configuration
@@ -111,6 +113,11 @@ namespace Masterloop.Plugin.Application
         /// Network timeout in seconds (default: 30).
         /// </summary>
         public int Timeout { get; set; } = 30;
+
+        /// <summary>
+        /// Acknowledge interval in seconds (default: 5).
+        /// </summary>
+        public int AcknowledgementInterval { get; set; } = 5;
 
         /// <summary>
         /// Application metadata used in server api interactions for improved tracability (optional).
@@ -527,15 +534,28 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Fetch next 1 incoming message in queue and dispatch if event handler is associated with it.
         /// </summary>
-        /// <returns>True if message was received, false otherwise.</returns>
+        /// <returns>True if message was available, false otherwise.</returns>
         public bool Fetch()
         {
+            if (UseAutomaticCallbacks)
+            {
+                throw new InvalidOperationException("Fetch cannot be used when UseAutomaticCallbacks is set to True.");
+            }
+
             _lastFetchedMessageRoutingKey = null;
             _lastFetchedMessageBody = null;
 
             // Queue is empty, nothing to fetch
             if (_queue.IsEmpty)
             {
+                lock (_subModelLock)
+                {
+                    if (_lastDispatchedDeliveryTag.HasValue)   // Acknowledge remaining in-flight messages.
+                    {
+                        _subModel.BasicAck(_lastDispatchedDeliveryTag.Value, true);
+                        _lastDispatchedDeliveryTag = null;
+                    }
+                }
                 return false;
             }
 
@@ -1318,7 +1338,6 @@ namespace Masterloop.Plugin.Application
                     lock (_pubModelLock)
                     {
                         _pubModel = _pubConnection.CreateModel();
-                        _pubModel.BasicQos(0, (ushort)this.PrefetchCount, false);
                         _transactionOpen = false;
                         if (_pubModel == null || !_pubModel.IsOpen) return false;
                     }
@@ -1407,12 +1426,26 @@ namespace Masterloop.Plugin.Application
             {
                 lock (_subModelLock)
                 {
-                    if (dispatched)
+                    if (dispatched) // If dispatch was successful, only ack on interval to avoid too much network latency.
                     {
-                        _subModel.BasicAck(deliveryTag, false);
+                        if (DateTime.UtcNow > _nextAcknowledgement)
+                        {
+                            _subModel.BasicAck(deliveryTag, true);
+                            _lastDispatchedDeliveryTag = null;
+                            _nextAcknowledgement = DateTime.UtcNow.AddSeconds(AcknowledgementInterval);
+                        }
+                        else
+                        {
+                            _lastDispatchedDeliveryTag = deliveryTag;
+                        }
                     }
                     else
                     {
+                        if (_lastDispatchedDeliveryTag.HasValue)
+                        {
+                            _subModel.BasicAck(_lastDispatchedDeliveryTag.Value, true);
+                            _lastDispatchedDeliveryTag = null;
+                        }
                         _subModel.BasicNack(deliveryTag, false, false);
                     }
                 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Masterloop.Core.Types.Base;
+using Masterloop.Core.Types.Commands;
 using Masterloop.Core.Types.LiveConnect;
 using Masterloop.Core.Types.Observations;
 
@@ -9,17 +10,27 @@ namespace Masterloop.Plugin.Application.LongTests
     public class ObservationSubscriber
     {
         IMasterloopLiveConnection _live;
-        LiveAppRequest _lar; 
+        LiveAppRequest _lar;
+        DateTime _nextGenerate = DateTime.UtcNow.AddDays(1);
+        DateTime _nextPoll = DateTime.UtcNow;
+        DateTime _nextStats = DateTime.UtcNow;
+        int _counter = 0;
+        object _semaphore = new object();
+        string _mid;
 
-        public ObservationSubscriber(string hostname, string username, string password, bool useEncryption)
+        public ObservationSubscriber(string hostname, string username, string password, bool useEncryption, string mid, string tid)
         {
             _live = new MasterloopLiveConnection(hostname, username, password, useEncryption);
             _live.UseAutomaticCallbacks = false;
+            _live.UseAutomaticAcknowledgement = false;
+            _live.PrefetchCount = 1000;
             _lar = new LiveAppRequest()
             {
-                TID = "",
-                ConnectAllObservations = true
+                TID = tid,
+                ConnectAllObservations = true,
+                ConnectAllCommands = true
             };
+            _mid = mid;
         }
 
         public bool Init()
@@ -37,28 +48,58 @@ namespace Masterloop.Plugin.Application.LongTests
         {
             while (true)
             {
-                if (!_live.IsConnected())
+                try
                 {
-                    if (!_live.Connect())
+                    if (!_live.IsConnected())
                     {
-                        Thread.Sleep(5000);
+                        Console.WriteLine($"{DateTime.UtcNow:o} - Not connected, reconnecting.");
+                        if (!_live.Connect())
+                        {
+                            Console.WriteLine($"{DateTime.UtcNow:o} - Re-connection failed.");
+                            Thread.Sleep(5000);
+                        }
                     }
+                    if (DateTime.UtcNow > _nextGenerate)
+                    {
+                        _live.SendCommand(_mid, new Command() { Id = 6, Timestamp = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddMinutes(2), Arguments = new CommandArgument[] { new CommandArgument() { Id = 1, Value = "1000" } } });
+                        //_nextGenerate = DateTime.UtcNow.AddSeconds(30);
+                    }
+
+                    if (DateTime.UtcNow > _nextPoll)
+                    {
+                        _live.SendCommand(_mid, new Command() { Id = 6, Timestamp = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddMinutes(2), Arguments = new CommandArgument[] { new CommandArgument() { Id = 1, Value = "100" } } });
+                        _nextPoll = DateTime.UtcNow.AddMilliseconds(5000);
+                    }
+
+                    /*if (_live.QueueCount > 0)
+                    {
+                        Console.WriteLine($"{DateTime.UtcNow:o} - {_live.QueueCount} messages in queue.");
+                    }*/
+                    while (_live.Fetch())
+                    {
+                    }
+                    Thread.Sleep(1);
                 }
-                if (_live.QueueCount > 0)
+                catch (Exception e)
                 {
-                    Console.WriteLine($"{_live.QueueCount} messages in queue.");
+                    Console.WriteLine($"{DateTime.UtcNow:o} - {e.Message} - {e.StackTrace}");
                 }
-                while (_live.QueueCount > 0)
-                {
-                    _live.Fetch();
-                }
-                Thread.Sleep(1);
             }
         }
 
         private void OnObservationReceived(string mid, int observationId, Observation o)
         {
-            Console.WriteLine($"{mid} received obsId={observationId} with timestamp {o.Timestamp:O}");
+            lock (_semaphore)
+            {
+                _counter++;
+                if (DateTime.UtcNow > _nextStats)
+                {
+                    Console.WriteLine($"{DateTime.UtcNow:o} - Message rate {_counter} msgs/s");
+                    _counter = 0;
+                    _nextStats = DateTime.UtcNow.AddSeconds(1);
+                }
+                //Console.WriteLine($"{mid} received obsId={observationId} with timestamp {o.Timestamp:O}");
+            }
         }
     }
 }
