@@ -17,6 +17,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Masterloop.Plugin.Application
 {
@@ -78,6 +79,7 @@ namespace Masterloop.Plugin.Application
         private string _lastFetchedMessageBody;
         private ulong? _lastDispatchedDeliveryTag;
         private DateTime _nextAcknowledgement = DateTime.UtcNow;
+        private Timer _multiAcknowledgeTimer;
         #endregion
 
         #region Configuration
@@ -161,9 +163,9 @@ namespace Masterloop.Plugin.Application
         public bool UseAutomaticCallbacks { get; set; } = true;
 
         /// <summary>
-        /// Set to True to quickly acknowledge all incoming messages (default), or False for acknowledge only messages with registered handlers.
+        /// Set to True to quickly acknowledge all incoming messages, or False for acknowledge only messages with registered handlers (default).
         /// </summary>
-        public bool UseAutomaticAcknowledgement { get; set; } = true;
+        public bool UseAutomaticAcknowledgement { get; set; } = false;
 
         /// <summary>
         /// Set to True to send messages immediatelly (default), or False when using transactions.
@@ -174,7 +176,7 @@ namespace Masterloop.Plugin.Application
         /// Prefetch count, must be set before opening connection. Default is 20.
         /// More info can be found here: https://www.rabbitmq.com/consumer-prefetch.html
         /// </summary>
-        public int PrefetchCount { get; set; } = 20;
+        public int PrefetchCount { get; set; } = 500;
         #endregion
 
         #region State
@@ -363,6 +365,14 @@ namespace Masterloop.Plugin.Application
         /// </summary>
         public void Disconnect()
         {
+            if (_multiAcknowledgeTimer != null)
+            {
+                _multiAcknowledgeTimer.Stop();
+                _multiAcknowledgeTimer.Elapsed -= OnAcknowledgeTimer;
+                _multiAcknowledgeTimer.Dispose();
+                _multiAcknowledgeTimer = null;
+            }
+
             if (_consumer != null)
             {
                 lock (_consumer)
@@ -1422,25 +1432,19 @@ namespace Masterloop.Plugin.Application
                     }
                 }
             }
+
             if (!UseAutomaticAcknowledgement)
             {
                 lock (_subModelLock)
                 {
-                    if (dispatched) // If dispatch was successful, only ack on interval to avoid too much network latency.
+                    if (dispatched)
                     {
-                        if (DateTime.UtcNow > _nextAcknowledgement)
-                        {
-                            _subModel.BasicAck(deliveryTag, true);
-                            _lastDispatchedDeliveryTag = null;
-                            _nextAcknowledgement = DateTime.UtcNow.AddSeconds(AcknowledgementInterval);
-                        }
-                        else
-                        {
-                            _lastDispatchedDeliveryTag = deliveryTag;
-                        }
+                        // If dispatch was successful update _lastDispatchedDeliveryTag and timer thread  will ACK on interval to avoid too much network latency.
+                        _lastDispatchedDeliveryTag = deliveryTag;
                     }
                     else
                     {
+                        // Dispatch failed, ACK up to _lastDispatchedDeliveryTag, then NACK current message.
                         if (_lastDispatchedDeliveryTag.HasValue)
                         {
                             _subModel.BasicAck(_lastDispatchedDeliveryTag.Value, true);
@@ -1454,12 +1458,32 @@ namespace Masterloop.Plugin.Application
             return dispatched;
         }
 
+        private void OnAcknowledgeTimer(Object source, ElapsedEventArgs e)
+        {
+            lock (_subModelLock)
+            {
+                if (_lastDispatchedDeliveryTag.HasValue)
+                {
+                    _subModel.BasicAck(_lastDispatchedDeliveryTag.Value, true);
+                    _lastDispatchedDeliveryTag = null;
+                }
+            }
+        }
+
         private bool OpenConnection()
         {
             if (_liveConnectionDetails != null)
             {
                 if (Open())
                 {
+                    if (!UseAutomaticAcknowledgement)
+                    {
+                        _multiAcknowledgeTimer = new Timer();
+                        _multiAcknowledgeTimer.Elapsed += OnAcknowledgeTimer;
+                        _multiAcknowledgeTimer.AutoReset = true;
+                        _multiAcknowledgeTimer.Interval = AcknowledgementInterval * 1000;
+                        _multiAcknowledgeTimer.Start();
+                    }
                     // Enable automatic callback handler if specified.
                     lock (_subModelLock)
                     {
@@ -1474,6 +1498,7 @@ namespace Masterloop.Plugin.Application
                             return false;
                         }
                     }
+
                     return true;
                 }
                 else

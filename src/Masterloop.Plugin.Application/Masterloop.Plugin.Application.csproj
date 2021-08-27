@@ -10,17 +10,17 @@
     <Authors>Masterloop</Authors>
     <PackageTags>IoT Masterloop Application Plugin</PackageTags>
     <Copyright>Copyright (c) 2013 Masterloop</Copyright>
-    <PackageReleaseNotes>Whitelist management API.</PackageReleaseNotes>
+    <PackageReleaseNotes>Full duplex pub/sub for MasterloopLiveConnection, improved acknowledge performance.</PackageReleaseNotes>
     <Description>Plugin to connect .NET based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
     <FileVersion>6.0.1.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>6.3.4-rc</PackageVersion>
+    <PackageVersion>6.4.0</PackageVersion>
     <Owners>jhskailand</Owners>
     <Summary>Plugin to connect .NET based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <ReleaseVersion>6.3.4-rc</ReleaseVersion>
+    <ReleaseVersion>6.4.0</ReleaseVersion>
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
     <Configurations>Release;Debug</Configurations>
