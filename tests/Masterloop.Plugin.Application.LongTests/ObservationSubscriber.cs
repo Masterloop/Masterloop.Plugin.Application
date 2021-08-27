@@ -23,7 +23,7 @@ namespace Masterloop.Plugin.Application.LongTests
             _live = new MasterloopLiveConnection(hostname, username, password, useEncryption);
             _live.UseAutomaticCallbacks = false;
             _live.UseAutomaticAcknowledgement = false;
-            _live.PrefetchCount = 1000;
+            _live.PrefetchCount = 100;
             _lar = new LiveAppRequest()
             {
                 TID = tid,
