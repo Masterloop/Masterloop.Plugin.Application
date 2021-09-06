@@ -14,7 +14,7 @@ namespace Masterloop.Plugin.Application
         bool IgnoreSslCertificateErrors { get; set; }
         ushort HeartbeatInterval { get; set; }
         int Timeout { get; set; }
-        int AcknowledgementInterval { get; set; }
+        int MaximumWaitBeforeAcknowledgement { get; set; }
         ApplicationMetadata Metadata { get; set; }
         LiveConnectionDetails ConnectionDetails { get; }
         string ConnectionKey { get; }

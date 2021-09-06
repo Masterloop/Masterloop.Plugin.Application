@@ -78,8 +78,8 @@ namespace Masterloop.Plugin.Application
         private string _lastFetchedMessageRoutingKey;
         private string _lastFetchedMessageBody;
         private ulong? _lastDispatchedDeliveryTag;
-        private DateTime _nextAcknowledgement = DateTime.UtcNow;
         private Timer _multiAcknowledgeTimer;
+        private int _dispatchCounter;
         #endregion
 
         #region Configuration
@@ -117,9 +117,9 @@ namespace Masterloop.Plugin.Application
         public int Timeout { get; set; } = 30;
 
         /// <summary>
-        /// Acknowledge interval in seconds (default: 5).
+        /// Maximum unacknowledgement period in seconds (default: 5). Messages can remain unacknowledged from time of delivery, up to this time period before they are being acknowledged. Only relevant if UseAutomaticAcknowledgement is false.
         /// </summary>
-        public int AcknowledgementInterval { get; set; } = 5;
+        public int MaximumWaitBeforeAcknowledgement { get; set; } = 5;
 
         /// <summary>
         /// Application metadata used in server api interactions for improved tracability (optional).
@@ -1461,6 +1461,11 @@ namespace Masterloop.Plugin.Application
                     {
                         // If dispatch was successful update _lastDispatchedDeliveryTag and timer thread  will ACK on interval to avoid too much network latency.
                         _lastDispatchedDeliveryTag = deliveryTag;
+                        _dispatchCounter++;
+                        if (_dispatchCounter >= this.PrefetchCount)
+                        {
+                            AcknowledgeUpToLastDispatched();
+                        }
                     }
                     else
                     {
@@ -1480,6 +1485,11 @@ namespace Masterloop.Plugin.Application
 
         private void OnAcknowledgeTimer(Object source, ElapsedEventArgs e)
         {
+            AcknowledgeUpToLastDispatched();
+        }
+
+        private void AcknowledgeUpToLastDispatched()
+        {
             lock (_subModelLock)
             {
                 if (_lastDispatchedDeliveryTag.HasValue)
@@ -1487,6 +1497,7 @@ namespace Masterloop.Plugin.Application
                     _subModel.BasicAck(_lastDispatchedDeliveryTag.Value, true);
                     _lastDispatchedDeliveryTag = null;
                 }
+                _dispatchCounter = 0;
             }
         }
 
@@ -1501,7 +1512,7 @@ namespace Masterloop.Plugin.Application
                         _multiAcknowledgeTimer = new Timer();
                         _multiAcknowledgeTimer.Elapsed += OnAcknowledgeTimer;
                         _multiAcknowledgeTimer.AutoReset = true;
-                        _multiAcknowledgeTimer.Interval = AcknowledgementInterval * 1000;
+                        _multiAcknowledgeTimer.Interval = MaximumWaitBeforeAcknowledgement * 1000;
                         _multiAcknowledgeTimer.Start();
                     }
                     // Enable automatic callback handler if specified.
