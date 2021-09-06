@@ -53,7 +53,7 @@ namespace Masterloop.Plugin.Application.LongTests
                     if (!_live.IsConnected())
                     {
                         Console.WriteLine($"{DateTime.UtcNow:o} - Not connected, reconnecting.");
-                        if (!_live.Connect())
+                        if (!_live.Connect(new LiveAppRequest[] { _lar }))
                         {
                             Console.WriteLine($"{DateTime.UtcNow:o} - Re-connection failed.");
                             Thread.Sleep(5000);

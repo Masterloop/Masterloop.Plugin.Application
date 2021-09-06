@@ -467,22 +467,14 @@ namespace Masterloop.Plugin.Application
         /// <returns>True if connected, False otherwise.</returns>
         public bool IsConnected()
         {
-            if (_connectionFactory == null) return false;
-
-            if (_subConnection == null) return false;
-            if (!_subConnection.IsOpen) return false;
-            if (_subModel == null) return false;
-            lock (_subModelLock)
+            if (!IsPublisherConnected())
             {
-                if (!_subModel.IsOpen) return false;
+                return false;
             }
 
-            if (_pubConnection == null) return false;
-            if (!_pubConnection.IsOpen) return false;
-            if (_pubModel == null) return false;
-            lock (_pubModelLock)
+            if (!IsSubscriberConnected())
             {
-                if (!_pubModel.IsOpen) return false;
+                return false;
             }
 
             return true;
@@ -602,7 +594,7 @@ namespace Masterloop.Plugin.Application
                 throw new ArgumentException("Unable to use atomic transactions when object has an open transaction.");
             }
 
-            if (IsConnected())
+            if (IsPublisherConnected())
             {
                 IBasicProperties properties = GetMessageProperties(1);
                 if (command.ExpiresAt.HasValue)
@@ -651,7 +643,7 @@ namespace Masterloop.Plugin.Application
                 throw new ArgumentException("Unable to use atomic transactions when object has an open transaction.");
             }
 
-            if (IsConnected())
+            if (IsPublisherConnected())
             {
                 if (!timestamp.HasValue)
                 {
@@ -1060,6 +1052,34 @@ namespace Masterloop.Plugin.Application
             _commandSubscriptions = new List<CommandSubscription<Command>>();
             _commandResponseSubscriptions = new List<CommandSubscription<CommandResponse>>();
             _pulseSubscriptions = new List<PulseSubscription>();
+        }
+
+        private bool IsPublisherConnected()
+        {
+            if (_connectionFactory == null) return false;
+
+            if (_pubConnection == null) return false;
+            if (!_pubConnection.IsOpen) return false;
+            if (_pubModel == null) return false;
+            lock (_pubModelLock)
+            {
+                if (!_pubModel.IsOpen) return false;
+            }
+            return true;
+        }
+
+        private bool IsSubscriberConnected()
+        {
+            if (_connectionFactory == null) return false;
+
+            if (_subConnection == null) return false;
+            if (!_subConnection.IsOpen) return false;
+            if (_subModel == null) return false;
+            lock (_subModelLock)
+            {
+                if (!_subModel.IsOpen) return false;
+            }
+            return true;
         }
 
         private void RemoveHandler<T>(List<ObservationSubscription<T>> table, string MID, int observationId)
