@@ -117,5 +117,35 @@ namespace Masterloop.Plugin.Application.Tests
             var result = await GetMCSAPI().CreatePersistentSubscriptionWhitelistAsync(GetPersistentSubscriptionKey());
             Assert.True(result);
         }
+
+        [Fact]
+        public void GetDeviceTemplateFirmwareVariants()
+        {
+            var variants = GetMCSAPI().GetDeviceTemplateFirmwareVariants(GetTID());
+            Assert.True(variants.Length == 2);
+        }
+
+        [Fact]
+        public async void GetDeviceTemplateFirmwareVariantsAsync()
+        {
+            var variants = await GetMCSAPI().GetDeviceTemplateFirmwareVariantsAsync(GetTID());
+            Assert.True(variants.Length == 2);
+        }
+
+        [Fact]
+        public void GetCurrentDeviceTemplateVariantFirmwareDetails()
+        {
+            var firmwareVariantId = 0;
+            var result = GetMCSAPI().GetCurrentDeviceTemplateVariantFirmwareDetails(GetTID(), firmwareVariantId);
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async void GetCurrentDeviceTemplateVariantFirmwareDetailsAsync()
+        {
+            var firmwareVariantId = 0;
+            var result = await GetMCSAPI().GetCurrentDeviceTemplateVariantFirmwareDetailsAsync(GetTID(), firmwareVariantId);
+            Assert.NotNull(result);
+        }
     }
 }

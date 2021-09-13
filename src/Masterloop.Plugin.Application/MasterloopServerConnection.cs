@@ -53,6 +53,8 @@ namespace Masterloop.Plugin.Application
         private const string _addressDeviceSettingsExpanded = "/api/devices/{0}/settings/expanded";
         private const string _addressDeviceLatestActivityTimestamp = "/api/devices/{0}/activity/latest/timestamp";
         private const string _addressDeviceTemplateFirmwareCurrent = "/api/templates/{0}/firmware/current";
+        private const string _addressDeviceTemplateFirmwareVariants = "/api/templates/{0}/firmware/variants";
+        private const string _addressDeviceTemplateFirmwareVariantsCurrent = "/api/templates/{0}/firmware/{1}/current";
         private const string _addressToolsLiveConnect = "/api/tools/liveconnect";
         private const string _addressToolsLiveConnectTemporaryIdentified = "/api/tools/liveconnect/{0}";
         private const string _addressToolsLiveConnectPersistent = "/api/tools/liveconnect/persistent";
@@ -477,6 +479,54 @@ namespace Masterloop.Plugin.Application
             string url = string.Format(_addressDeviceTemplateFirmwareCurrent, TID);
             return await GetDeserializedAsync<FirmwareReleaseDescriptor>(url);
         }
+
+        /// <summary>
+        /// Get firmware variants for template.
+        /// </summary>
+        /// <param name="TID">Template identifier.</param>
+        /// <returns>Firmware variant information.</returns>
+        public FirmwareVariant[] GetDeviceTemplateFirmwareVariants(string TID)
+        {
+            string url = string.Format(_addressDeviceTemplateFirmwareVariants, TID);
+            return GetDeserialized<FirmwareVariant[]>(url);
+        }
+
+        /// <summary>
+        /// Get firmware variants for template.
+        /// </summary>
+        /// <param name="TID">Template identifier.</param>
+        /// <returns>Firmware variant information.</returns>
+        public async Task<FirmwareVariant[]> GetDeviceTemplateFirmwareVariantsAsync(string TID)
+        {
+            string url = string.Format(_addressDeviceTemplateFirmwareVariants, TID);
+            return await GetDeserializedAsync<FirmwareVariant[]>(url);
+        }
+
+        /// <summary>
+        /// Get current firmware details for template firmware variant.
+        /// </summary>
+        /// <param name="TID">Template identifier.</param>
+        /// <param name="firmwareVariantId">Variant identifier.</param>
+        /// <returns>Firmware release information.</returns>
+        public FirmwareReleaseDescriptor GetCurrentDeviceTemplateVariantFirmwareDetails(string TID, int firmwareVariantId)
+        {
+            string url = string.Format(_addressDeviceTemplateFirmwareVariantsCurrent, TID, firmwareVariantId);
+            return GetDeserialized<FirmwareReleaseDescriptor>(url);
+        }
+
+        /// <summary>
+        /// Get current firmware details for template firmware variant.
+        /// </summary>
+        /// <param name="TID">Template identifier.</param>
+        /// <param name="firmwareVariantId">Variant identifier.</param>
+        /// <returns>Firmware release information.</returns>
+        public async Task<FirmwareReleaseDescriptor> GetCurrentDeviceTemplateVariantFirmwareDetailsAsync(string TID, int firmwareVariantId)
+        {
+            string url = string.Format(_addressDeviceTemplateFirmwareVariantsCurrent, TID, firmwareVariantId);
+            return await GetDeserializedAsync<FirmwareReleaseDescriptor>(url);
+        }
+        
+        
         #endregion
 
         #region Observations
