@@ -17,7 +17,7 @@ namespace Masterloop.Plugin.Application.Tests
             return _config;
         }
 
-        protected static MasterloopServerConnection GetMCSAPI()
+        protected static IMasterloopServerConnection GetMCSAPI()
         {
             IConfiguration config = GetConfig();
             return new MasterloopServerConnection(config["Hostname"], config["Username"], config["Password"], Boolean.Parse(config["UseHTTPS"]));
@@ -25,7 +25,7 @@ namespace Masterloop.Plugin.Application.Tests
 
         protected static MasterloopLiveConnection GetMCSLiveTemporary()
         {
-            MasterloopServerConnection mcs = GetMCSAPI();
+            var mcs = GetMCSAPI();
             LiveAppRequest lar = new LiveAppRequest()
             {
                 MID = GetMID(),
@@ -40,7 +40,7 @@ namespace Masterloop.Plugin.Application.Tests
 
         protected static MasterloopLiveConnection GetMCSPersistentConnection()
         {
-            MasterloopServerConnection mcs = GetMCSAPI();
+            var mcs = GetMCSAPI();
             string subscriptionKey = GetPersistentSubscriptionKey();
             mcs.DeleteLivePersistentSubscription(subscriptionKey);
             LivePersistentSubscriptionRequest request = new LivePersistentSubscriptionRequest()

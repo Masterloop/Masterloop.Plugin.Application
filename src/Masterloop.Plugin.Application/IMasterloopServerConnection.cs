@@ -31,6 +31,7 @@ namespace Masterloop.Plugin.Application
         bool CreateTemplate(int tenantId, DeviceTemplate template);
 
         // Devices
+        Devicelet[] GetDevicelets(bool includeDetails = false);
         Device[] GetDevices(bool includeMetadata);
         Task<Device[]> GetDevicesAsync(bool includeMetadata);
         DetailedDevice[] GetDevices(bool includeMetadata, bool includeDetails);
@@ -49,6 +50,10 @@ namespace Masterloop.Plugin.Application
         Task<DateTime?> GetLatestLoginTimestampAsync(string MID);
         FirmwareReleaseDescriptor GetCurrentDeviceTemplateFirmwareDetails(string TID);
         Task<FirmwareReleaseDescriptor> GetCurrentDeviceTemplateFirmwareDetailsAsync(string TID);
+        FirmwareVariant[] GetDeviceTemplateFirmwareVariants(string TID);
+        Task<FirmwareVariant[]> GetDeviceTemplateFirmwareVariantsAsync(string TID);
+        FirmwareReleaseDescriptor GetCurrentDeviceTemplateVariantFirmwareDetails(string TID, int firmwareVariantId);
+        Task<FirmwareReleaseDescriptor> GetCurrentDeviceTemplateVariantFirmwareDetailsAsync(string TID, int firmwareVariantId);
 
         // Observations
         Observation GetCurrentObservation(string MID, int observationId, DataType dataType);
@@ -113,5 +118,6 @@ namespace Masterloop.Plugin.Application
         // Connectivity
         bool CanPing();
         Task<bool> CanPingAsync();
+
     }
 }

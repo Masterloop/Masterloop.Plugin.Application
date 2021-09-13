@@ -74,7 +74,7 @@ namespace Masterloop.Plugin.Application.Tests
                     new CommandArgument() { Id = MLTEST.Constants.Commands.PollSingleArguments.ObsId, Value = "4" }
                 }
             };
-            MasterloopServerConnection mcs = GetMCSAPI();
+            var mcs = GetMCSAPI();
             mcs.Metadata = new ApplicationMetadata()
             {
                 Application = "Tests.ServerConnection",
