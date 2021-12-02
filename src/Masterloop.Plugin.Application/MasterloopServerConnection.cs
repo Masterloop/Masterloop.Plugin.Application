@@ -17,6 +17,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.IO;
+using System.Net.Http;
 using Masterloop.Codecs;
 using System.Reflection;
 
@@ -29,6 +30,9 @@ namespace Masterloop.Plugin.Application
         private readonly string _username;
         private readonly string _password;
         private string _localAddress;
+        private int _timeout;
+        private ApplicationMetadata _metadata;
+        private readonly ExtendedHttpClient _extendedHttpClient;
         #endregion
 
         #region Constants
@@ -72,13 +76,25 @@ namespace Masterloop.Plugin.Application
         private const string _MIME_TYPE_MASTERLOOP_DEVICES = "application/vnd.masterloop.devices";
 
         private const int _defaultTimeout = 30; // 30 seconds
+
+        private const string DefaultAcceptHeader = "application/json";
+        private const string DefaultContentType = "application/json";
         #endregion
 
         #region Configuration
+
         /// <summary>
         /// Network timeout in seconds.
         /// </summary>
-        public int Timeout { get; set; }
+        public int Timeout
+        {
+            get => _timeout;
+            set
+            {
+                _timeout = value;
+                _extendedHttpClient?.SetTimeout(_timeout);
+            }
+        }
 
         /// <summary>
         /// Use HTTP traffic compression (gzip).
@@ -88,7 +104,18 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Application metadata used in server api interactions for improved tracability (optional).
         /// </summary>
-        public ApplicationMetadata Metadata { get; set; }
+        public ApplicationMetadata Metadata
+        {
+            get => _metadata;
+            set
+            {
+                _metadata = value;
+                _extendedHttpClient?.SetMetaData(value);
+            }
+        }
+
+        public bool UseHttpClientInsteadOfWebRequests { get; set; }
+
         #endregion
 
         #region State
@@ -135,6 +162,7 @@ namespace Masterloop.Plugin.Application
                 Application = calling.GetName().Name,
                 Reference = fvi.FileVersion
             };
+            _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata);
         }
 
         /// <summary>
@@ -189,6 +217,7 @@ namespace Masterloop.Plugin.Application
         {
             string url = string.Format(_addressDevicesWithMetadataAndDetails, false.ToString().ToLower(), includeDetails.ToString().ToLower());
             Tuple<bool, byte[]> result = await GetBytesAsync(url, _MIME_TYPE_MASTERLOOP_DEVICES);
+
             if (result.Item1 && result.Item2 != null)
             {
                 using (MemoryStream stream = new MemoryStream(result.Item2))
@@ -1233,8 +1262,12 @@ namespace Masterloop.Plugin.Application
             }
             return null;
         }
-        private Tuple<bool, string> GetString(string addressExtension, string accept = "application/json")
+
+        private Tuple<bool, string> GetString(string addressExtension, string accept = DefaultAcceptHeader)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return GetStringHttpClientAsync(addressExtension, accept).Result;
+
             Tuple<bool, byte[]> result = GetBytes(addressExtension, accept);
             if (result.Item1 && result.Item2 != null)
             {
@@ -1246,8 +1279,11 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private async Task<Tuple<bool, string>> GetStringAsync(string addressExtension, string accept = "application/json")
+        private async Task<Tuple<bool, string>> GetStringAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return await GetStringHttpClientAsync(addressExtension, accept);
+
             Tuple<bool, byte[]> result = await GetBytesAsync(addressExtension, accept);
             if (result.Item1 && result.Item2 != null)
             {
@@ -1259,9 +1295,12 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = "application/json")
+        private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = DefaultAcceptHeader)
         {
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            if (UseHttpClientInsteadOfWebRequests)
+                return GetBytesHttpClientAsync(addressExtension, accept).Result;
+
+            var webClient = new ExtendedWebClient();
             webClient.Accept = accept;
             webClient.Username = _username;
             webClient.Password = _password;
@@ -1307,8 +1346,11 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, byte[]>(success, result);
         }
 
-        private async Task<Tuple<bool, byte[]>> GetBytesAsync(string addressExtension, string accept = "application/json")
+        private async Task<Tuple<bool, byte[]>> GetBytesAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return await GetBytesHttpClientAsync(addressExtension, accept);
+
             ExtendedWebClient webClient = new ExtendedWebClient();
             webClient.Accept = accept;
             webClient.Username = _username;
@@ -1355,11 +1397,14 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, byte[]>(success, result);
         }
 
-        private Tuple<bool, string> Post(string addressExtension, string body, string contentType = "application/json")
+        private Tuple<bool, string> Post(string addressExtension, string body, string contentType = DefaultContentType)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return PostHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType).Result;
+
             ExtendedWebClient webClient = new ExtendedWebClient();
             webClient.ContentType = contentType;
-            webClient.Accept = "application/json";
+            webClient.Accept = DefaultAcceptHeader;
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
@@ -1404,11 +1449,14 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(success, result);
         }
 
-        private async Task<Tuple<bool, string>> PostAsync(string addressExtension, string body, string contentType = "application/json")
+        private async Task<Tuple<bool, string>> PostAsync(string addressExtension, string body, string contentType = DefaultContentType)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return await PostHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType);
+
             ExtendedWebClient webClient = new ExtendedWebClient();
             webClient.ContentType = contentType;
-            webClient.Accept = "application/json";
+            webClient.Accept = DefaultAcceptHeader;
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
@@ -1455,6 +1503,9 @@ namespace Masterloop.Plugin.Application
 
         private Tuple<bool, string> Delete(string addressExtension)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return DeleteHttpClientAsync(addressExtension).Result;
+
             ExtendedWebClient webClient = new ExtendedWebClient();
             webClient.Username = _username;
             webClient.Password = _password;
@@ -1501,6 +1552,9 @@ namespace Masterloop.Plugin.Application
 
         private async Task<Tuple<bool, string>> DeleteAsync(string addressExtension)
         {
+            if (UseHttpClientInsteadOfWebRequests)
+                return await DeleteHttpClientAsync(addressExtension);
+
             ExtendedWebClient webClient = new ExtendedWebClient();
             webClient.Username = _username;
             webClient.Password = _password;
@@ -1537,6 +1591,126 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(false, result);
         }
 
+        #region Http methods using HttpClient
+
+        private async Task<Tuple<bool, string>> GetStringHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        {
+            var url = _baseAddress + addressExtension;
+            var success = false;
+            string result = null;
+            try
+            {
+                var response = await _extendedHttpClient.DownloadStringAsync(url, accept);
+                result = response.Content;
+                LastHttpStatusCode = response.StatusCode;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    success = true;
+                }
+                else
+                {
+                    LastErrorMessage = response.StatusDescription;
+                }
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = _extendedHttpClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+            return new Tuple<bool, string>(success, result);
+        }
+
+        private async Task<Tuple<bool, byte[]>> GetBytesHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        {
+            var url = _baseAddress + addressExtension;
+            var success = false;
+            byte[] result = null;
+            try
+            {
+                var response = await _extendedHttpClient.DownloadBytesAsync(url, accept);
+                result = response.Content;
+                LastHttpStatusCode = response.StatusCode;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    success = true;
+                }
+                else
+                {
+                    LastErrorMessage = response.StatusDescription;
+                }
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = _extendedHttpClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+            return new Tuple<bool, byte[]>(success, result);
+        }
+
+        private async Task<Tuple<bool, string>> PostHttpClientAsync(string addressExtension, string body, string accept = DefaultAcceptHeader, string contentType = DefaultContentType)
+        {
+            var url = _baseAddress + addressExtension;
+            var success = false;
+            string result = null;
+            try
+            {
+                var response = await _extendedHttpClient.UploadStringAsync(url, body, accept, contentType);
+                result = response.Content;
+                LastHttpStatusCode = response.StatusCode;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    success = true;
+                }
+                else
+                {
+                    LastErrorMessage = response.StatusDescription;
+                }
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = _extendedHttpClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+            return new Tuple<bool, string>(success, result);
+        }
+
+        private async Task<Tuple<bool, string>> DeleteHttpClientAsync(string addressExtension)
+        {
+            var url = _baseAddress + addressExtension;
+            var success = false;
+            string result = null;
+            try
+            {
+                var response = await _extendedHttpClient.DeleteAsync(url);
+                result = response.Content;
+                LastHttpStatusCode = response.StatusCode;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    success = true;
+                }
+                else
+                {
+                    LastErrorMessage = response.StatusDescription;
+                }
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = _extendedHttpClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+            return new Tuple<bool, string>(success, result);
+        }
+
+        #endregion
+
         private T GetDeserialized<T>(string url)
         {
             Tuple<bool, string> result = GetString(url);
@@ -1563,7 +1737,7 @@ namespace Masterloop.Plugin.Application
             return default(T);
         }
 
-        private T PostDeserialized<T>(string url, string body, string contentType = "application/json")
+        private T PostDeserialized<T>(string url, string body, string contentType = DefaultContentType)
         {
             Tuple<bool, string> result = Post(url, body, contentType);
             if (result.Item1)
@@ -1576,7 +1750,7 @@ namespace Masterloop.Plugin.Application
             return default(T);
         }
 
-        private async Task<T> PostDeserializedAsync<T>(string url, string body, string contentType = "application/json")
+        private async Task<T> PostDeserializedAsync<T>(string url, string body, string contentType = DefaultContentType)
         {
             Tuple<bool, string> result = await PostAsync(url, body, contentType);
             if (result.Item1)
