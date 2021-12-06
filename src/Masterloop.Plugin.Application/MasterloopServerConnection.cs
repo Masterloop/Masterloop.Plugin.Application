@@ -1266,25 +1266,104 @@ namespace Masterloop.Plugin.Application
         private Tuple<bool, string> GetString(string addressExtension, string accept = DefaultAcceptHeader)
         {
             if (UseHttpClientInsteadOfWebRequests)
-                return GetStringHttpClientAsync(addressExtension, accept).Result;
-
-            Tuple<bool, byte[]> result = GetBytes(addressExtension, accept);
-            if (result.Item1 && result.Item2 != null)
             {
-                return new Tuple<bool, string>(result.Item1, Encoding.UTF8.GetString(result.Item2));
+                return GetStringUsingHttpClientAsync(addressExtension, accept).Result;
             }
             else
             {
-                return new Tuple<bool, string>(result.Item1, string.Empty);
+                return GetStringUsingWebRequest(addressExtension, accept);
             }
         }
 
         private async Task<Tuple<bool, string>> GetStringAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
             if (UseHttpClientInsteadOfWebRequests)
-                return await GetStringHttpClientAsync(addressExtension, accept);
+            {
+                return await GetStringUsingHttpClientAsync(addressExtension, accept);
+            }
+            else
+            {
+                return await GetStringUsingWebRequestAsync(addressExtension, accept);
+            }
+        }
 
-            Tuple<bool, byte[]> result = await GetBytesAsync(addressExtension, accept);
+        private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = DefaultAcceptHeader)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return GetBytesUsingHttpClientAsync(addressExtension, accept).Result;
+            }
+            else
+            {
+                return GetBytesUsingWebRequest(addressExtension, accept);
+            }
+        }
+
+        private async Task<Tuple<bool, byte[]>> GetBytesAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return await GetBytesUsingHttpClientAsync(addressExtension, accept);
+            }
+            else
+            {
+                return await GetBytesUsingWebRequestAsync(addressExtension, accept);
+            }
+        }
+
+        private Tuple<bool, string> Post(string addressExtension, string body, string contentType = DefaultContentType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return PostUsingHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType).Result;
+            }
+            else
+            {
+                return PostUsingWebRequest(addressExtension, body, contentType);
+            }
+        }
+
+        private async Task<Tuple<bool, string>> PostAsync(string addressExtension, string body, string contentType = DefaultContentType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return await PostUsingHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType);
+            }
+            else
+            {
+                return await PostUsingWebRequestAsync(addressExtension, body, contentType);
+            }
+        }
+
+        private Tuple<bool, string> Delete(string addressExtension)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return DeleteUsingHttpClientAsync(addressExtension).Result;
+            }
+            else
+            {
+                return DeleteUsingWebRequest(addressExtension);
+            }
+        }
+
+        private async Task<Tuple<bool, string>> DeleteAsync(string addressExtension)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return await DeleteUsingHttpClientAsync(addressExtension);
+            }
+            else
+            {
+                return await DeleteUsingWebRequestAsync(addressExtension);
+            }
+        }
+
+        #region Http methods using WebRequests
+
+        private Tuple<bool, string> GetStringUsingWebRequest(string addressExtension, string accept)
+        {
+            var result = GetBytes(addressExtension, accept);
             if (result.Item1 && result.Item2 != null)
             {
                 return new Tuple<bool, string>(result.Item1, Encoding.UTF8.GetString(result.Item2));
@@ -1295,11 +1374,21 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = DefaultAcceptHeader)
+        private async Task<Tuple<bool, string>> GetStringUsingWebRequestAsync(string addressExtension, string accept)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return GetBytesHttpClientAsync(addressExtension, accept).Result;
+            var result = await GetBytesAsync(addressExtension, accept);
+            if (result.Item1 && result.Item2 != null)
+            {
+                return new Tuple<bool, string>(result.Item1, Encoding.UTF8.GetString(result.Item2));
+            }
+            else
+            {
+                return new Tuple<bool, string>(result.Item1, string.Empty);
+            }
+        }
 
+        private Tuple<bool, byte[]> GetBytesUsingWebRequest(string addressExtension, string accept)
+        {
             var webClient = new ExtendedWebClient();
             webClient.Accept = accept;
             webClient.Username = _username;
@@ -1308,8 +1397,8 @@ namespace Masterloop.Plugin.Application
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            bool success = false;
+            var url = _baseAddress + addressExtension;
+            var success = false;
             byte[] result = null;
             try
             {
@@ -1343,15 +1432,13 @@ namespace Masterloop.Plugin.Application
                 LastHttpStatusCode = webClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
+
             return new Tuple<bool, byte[]>(success, result);
         }
 
-        private async Task<Tuple<bool, byte[]>> GetBytesAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        private async Task<Tuple<bool, byte[]>> GetBytesUsingWebRequestAsync(string addressExtension, string accept)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return await GetBytesHttpClientAsync(addressExtension, accept);
-
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            var webClient = new ExtendedWebClient();
             webClient.Accept = accept;
             webClient.Username = _username;
             webClient.Password = _password;
@@ -1359,8 +1446,8 @@ namespace Masterloop.Plugin.Application
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            bool success = false;
+            var url = _baseAddress + addressExtension;
+            var success = false;
             byte[] result = null;
             try
             {
@@ -1394,15 +1481,13 @@ namespace Masterloop.Plugin.Application
                 LastHttpStatusCode = webClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
+
             return new Tuple<bool, byte[]>(success, result);
         }
 
-        private Tuple<bool, string> Post(string addressExtension, string body, string contentType = DefaultContentType)
+        private Tuple<bool, string> PostUsingWebRequest(string addressExtension, string body, string contentType)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return PostHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType).Result;
-
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            var webClient = new ExtendedWebClient();
             webClient.ContentType = contentType;
             webClient.Accept = DefaultAcceptHeader;
             webClient.Username = _username;
@@ -1411,9 +1496,9 @@ namespace Masterloop.Plugin.Application
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            string result = string.Empty;
-            bool success = false;
+            var url = _baseAddress + addressExtension;
+            var result = string.Empty;
+            var success = false;
             try
             {
                 result = webClient.UploadString(url, body);
@@ -1446,15 +1531,13 @@ namespace Masterloop.Plugin.Application
                 LastHttpStatusCode = webClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
+
             return new Tuple<bool, string>(success, result);
         }
 
-        private async Task<Tuple<bool, string>> PostAsync(string addressExtension, string body, string contentType = DefaultContentType)
+        private async Task<Tuple<bool, string>> PostUsingWebRequestAsync(string addressExtension, string body, string contentType)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return await PostHttpClientAsync(addressExtension, body, DefaultAcceptHeader, contentType);
-
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            var webClient = new ExtendedWebClient();
             webClient.ContentType = contentType;
             webClient.Accept = DefaultAcceptHeader;
             webClient.Username = _username;
@@ -1463,9 +1546,9 @@ namespace Masterloop.Plugin.Application
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            string result = string.Empty;
-            bool success = false;
+            var url = _baseAddress + addressExtension;
+            var result = string.Empty;
+            var success = false;
             try
             {
                 result = await webClient.UploadStringAsync(url, body);
@@ -1498,23 +1581,21 @@ namespace Masterloop.Plugin.Application
                 LastHttpStatusCode = webClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
+
             return new Tuple<bool, string>(success, result);
         }
 
-        private Tuple<bool, string> Delete(string addressExtension)
+        private Tuple<bool, string> DeleteUsingWebRequest(string addressExtension)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return DeleteHttpClientAsync(addressExtension).Result;
-
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            var webClient = new ExtendedWebClient();
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            string result = string.Empty;
+            var url = _baseAddress + addressExtension;
+            var result = string.Empty;
             try
             {
                 result = webClient.Delete(url);
@@ -1550,20 +1631,17 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(false, result);
         }
 
-        private async Task<Tuple<bool, string>> DeleteAsync(string addressExtension)
+        private async Task<Tuple<bool, string>> DeleteUsingWebRequestAsync(string addressExtension)
         {
-            if (UseHttpClientInsteadOfWebRequests)
-                return await DeleteHttpClientAsync(addressExtension);
-
-            ExtendedWebClient webClient = new ExtendedWebClient();
+            var webClient = new ExtendedWebClient();
             webClient.Username = _username;
             webClient.Password = _password;
             webClient.Timeout = Timeout;
             webClient.Metadata = this.Metadata;
             webClient.OriginAddress = _localAddress;
             webClient.UseCompression = this.UseCompression;
-            string url = _baseAddress + addressExtension;
-            string result = string.Empty;
+            var url = _baseAddress + addressExtension;
+            var result = string.Empty;
             try
             {
                 result = await webClient.DeleteAsync(url);
@@ -1591,9 +1669,11 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(false, result);
         }
 
+        #endregion
+
         #region Http methods using HttpClient
 
-        private async Task<Tuple<bool, string>> GetStringHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        private async Task<Tuple<bool, string>> GetStringUsingHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var url = _baseAddress + addressExtension;
             var success = false;
@@ -1622,7 +1702,7 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(success, result);
         }
 
-        private async Task<Tuple<bool, byte[]>> GetBytesHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        private async Task<Tuple<bool, byte[]>> GetBytesUsingHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var url = _baseAddress + addressExtension;
             var success = false;
@@ -1651,7 +1731,7 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, byte[]>(success, result);
         }
 
-        private async Task<Tuple<bool, string>> PostHttpClientAsync(string addressExtension, string body, string accept = DefaultAcceptHeader, string contentType = DefaultContentType)
+        private async Task<Tuple<bool, string>> PostUsingHttpClientAsync(string addressExtension, string body, string accept = DefaultAcceptHeader, string contentType = DefaultContentType)
         {
             var url = _baseAddress + addressExtension;
             var success = false;
@@ -1680,7 +1760,7 @@ namespace Masterloop.Plugin.Application
             return new Tuple<bool, string>(success, result);
         }
 
-        private async Task<Tuple<bool, string>> DeleteHttpClientAsync(string addressExtension)
+        private async Task<Tuple<bool, string>> DeleteUsingHttpClientAsync(string addressExtension)
         {
             var url = _baseAddress + addressExtension;
             var success = false;

@@ -10,6 +10,9 @@ namespace Masterloop.Plugin.Application
     public class ExtendedHttpClient
     {
         private const int DefaultTimeoutInSeconds = 30;
+        private const string OriginAddressHeader = "OriginAddress";
+        private const string OriginApplicationHeader = "OriginApplication";
+        private const string OriginReferenceHeader = "OriginReference";
 
         private readonly HttpClient _httpClient;
 
@@ -24,7 +27,6 @@ namespace Masterloop.Plugin.Application
             StatusCode = HttpStatusCode.Unused;
             StatusDescription = string.Empty;
 
-            _httpClient = new HttpClient();
             var httpClientHandler = new HttpClientHandler
             {
                 AutomaticDecompression = useCompression ? DecompressionMethods.GZip : DecompressionMethods.None
@@ -66,18 +68,18 @@ namespace Masterloop.Plugin.Application
             if (applicationMetadata == null)
                 return;
 
-            _httpClient.DefaultRequestHeaders.Remove("OriginApplication");
-            _httpClient.DefaultRequestHeaders.Remove("OriginAddress");
-            _httpClient.DefaultRequestHeaders.Remove("OriginReference");
+            _httpClient.DefaultRequestHeaders.Remove(OriginApplicationHeader);
+            _httpClient.DefaultRequestHeaders.Remove(OriginAddressHeader);
+            _httpClient.DefaultRequestHeaders.Remove(OriginReferenceHeader);
 
             if (!string.IsNullOrEmpty(applicationMetadata.Application))
-                _httpClient.DefaultRequestHeaders.Add("OriginApplication", applicationMetadata.Application);
+                _httpClient.DefaultRequestHeaders.Add(OriginApplicationHeader, applicationMetadata.Application);
 
             if (!string.IsNullOrEmpty(OriginAddress))
-                _httpClient.DefaultRequestHeaders.Add("OriginAddress", OriginAddress);
+                _httpClient.DefaultRequestHeaders.Add(OriginAddressHeader, OriginAddress);
 
             if (!string.IsNullOrEmpty(applicationMetadata.Reference))
-                _httpClient.DefaultRequestHeaders.Add("OriginReference", applicationMetadata.Reference);
+                _httpClient.DefaultRequestHeaders.Add(OriginReferenceHeader, applicationMetadata.Reference);
         }
 
         public async Task<HttpStringResponse> DownloadStringAsync(string url, string accept)
