@@ -19,6 +19,7 @@ namespace Masterloop.Plugin.Application
         int Timeout { get; set; }
         bool UseCompression { get; set; }
         ApplicationMetadata Metadata { get; set; }
+        bool UseHttpClientInsteadOfWebRequests { get; set; }
 
         // State
         string LastErrorMessage { get; set; }
