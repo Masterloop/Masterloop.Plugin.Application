@@ -102,7 +102,7 @@ namespace Masterloop.Plugin.Application
         public bool UseCompression { get; set; }
 
         /// <summary>
-        /// Application metadata used in server api interactions for improved tracability (optional).
+        /// Application metadata used in server api interactions for improved traceability (optional).
         /// </summary>
         public ApplicationMetadata Metadata
         {
@@ -114,7 +114,7 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        public bool UseHttpClientInsteadOfWebRequests { get; set; }
+        public bool UseHttpClientInsteadOfWebRequests { get; }
 
         #endregion
 
@@ -162,7 +162,45 @@ namespace Masterloop.Plugin.Application
                 Application = calling.GetName().Name,
                 Reference = fvi.FileVersion
             };
-            _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata);
+        }
+
+        /// <summary>
+        /// Constructs a new BasicApplication object.
+        /// </summary>
+        /// <param name="hostName">Host to connect to, e.g. "myserver.example.com" or "10.0.0.2".</param>
+        /// <param name="username">Login username.</param>
+        /// <param name="password">Login password.</param> 
+        /// <param name="httpClient">
+        ///     Instance of HttpClient (Should be used with IHttpClientFactory for optimized performance
+        ///     https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/use-httpclientfactory-to-implement-resilient-http-requests)
+        /// </param> 
+        /// <param name="useHttps">True if using HTTPS (SSL/TLS), False if using HTTP (unencrypted).</param>
+        public MasterloopServerConnection(string hostName, string username, string password, HttpClient httpClient, bool useHttps = true)
+        {
+            _username = username;
+            _password = password;
+            if (useHttps)
+            {
+                _baseAddress = string.Format("https://{0}", hostName);
+            }
+            else
+            {
+                _baseAddress = string.Format("http://{0}", hostName);
+            }
+            Timeout = _defaultTimeout;
+            _localAddress = GetLocalIPAddress();
+            UseCompression = true;
+
+            // Set default metadata to calling application.
+            Assembly calling = Assembly.GetCallingAssembly();
+            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+            Metadata = new ApplicationMetadata()
+            {
+                Application = calling.GetName().Name,
+                Reference = fvi.FileVersion
+            };
+            UseHttpClientInsteadOfWebRequests = true;
+            _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata, httpClient);
         }
 
         /// <summary>
