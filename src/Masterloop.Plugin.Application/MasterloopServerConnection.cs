@@ -31,6 +31,7 @@ namespace Masterloop.Plugin.Application
         private readonly string _password;
         private string _localAddress;
         private int _timeout;
+        private bool _useCompression;
         private ApplicationMetadata _metadata;
         private readonly ExtendedHttpClient _extendedHttpClient;
         #endregion
@@ -99,7 +100,23 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Use HTTP traffic compression (gzip).
         /// </summary>
-        public bool UseCompression { get; set; }
+        public bool UseCompression
+        {
+            get => _useCompression;
+            set
+            {
+                if (UseHttpClientInsteadOfWebRequests)
+                {
+                    var errorMessage =
+                        new StringBuilder(
+                            $"'{nameof(UseCompression)}' is not supported when '{nameof(UseHttpClientInsteadOfWebRequests)}' is set to true");
+                    errorMessage.AppendLine(
+                        $"In this case set the 'AutomaticDecompression' of '{nameof(HttpClientHandler)}' to desired value in the dependency injected '{nameof(HttpClient)}'");
+                    throw new Exception(errorMessage.ToString());
+                }
+                _useCompression = value;
+            }
+        }
 
         /// <summary>
         /// Application metadata used in server api interactions for improved traceability (optional).

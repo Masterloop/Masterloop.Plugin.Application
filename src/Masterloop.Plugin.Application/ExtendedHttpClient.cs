@@ -26,15 +26,7 @@ namespace Masterloop.Plugin.Application
             StatusCode = HttpStatusCode.Unused;
             StatusDescription = string.Empty;
 
-
-            // TODO: Check how to enable compression
             _httpClient = httpClient;
-            //var httpClientHandler = new HttpClientHandler
-            //{
-            //    AutomaticDecompression = useCompression ? DecompressionMethods.GZip : DecompressionMethods.None
-            //};
-
-            //_httpClient = new HttpClient(httpClientHandler);
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
             {
                 //request.Credentials = new NetworkCredential(this.Username, this.Password);
