@@ -31,6 +31,7 @@ namespace Masterloop.Plugin.Application
         private readonly string _password;
         private string _localAddress;
         private int _timeout;
+        private bool _useCompression;
         private ApplicationMetadata _metadata;
         private readonly ExtendedHttpClient _extendedHttpClient;
         #endregion
@@ -99,10 +100,26 @@ namespace Masterloop.Plugin.Application
         /// <summary>
         /// Use HTTP traffic compression (gzip).
         /// </summary>
-        public bool UseCompression { get; set; }
+        public bool UseCompression
+        {
+            get => _useCompression;
+            set
+            {
+                if (UseHttpClientInsteadOfWebRequests)
+                {
+                    var errorMessage =
+                        new StringBuilder(
+                            $"'{nameof(UseCompression)}' is not supported when '{nameof(UseHttpClientInsteadOfWebRequests)}' is set to true");
+                    errorMessage.AppendLine(
+                        $"In this case set the 'AutomaticDecompression' of '{nameof(HttpClientHandler)}' to desired value in the dependency injected '{nameof(HttpClient)}'");
+                    throw new Exception(errorMessage.ToString());
+                }
+                _useCompression = value;
+            }
+        }
 
         /// <summary>
-        /// Application metadata used in server api interactions for improved tracability (optional).
+        /// Application metadata used in server api interactions for improved traceability (optional).
         /// </summary>
         public ApplicationMetadata Metadata
         {
@@ -114,7 +131,7 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        public bool UseHttpClientInsteadOfWebRequests { get; set; }
+        public bool UseHttpClientInsteadOfWebRequests { get; }
 
         #endregion
 
@@ -162,7 +179,45 @@ namespace Masterloop.Plugin.Application
                 Application = calling.GetName().Name,
                 Reference = fvi.FileVersion
             };
-            _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata);
+        }
+
+        /// <summary>
+        /// Constructs a new BasicApplication object.
+        /// </summary>
+        /// <param name="hostName">Host to connect to, e.g. "myserver.example.com" or "10.0.0.2".</param>
+        /// <param name="username">Login username.</param>
+        /// <param name="password">Login password.</param> 
+        /// <param name="httpClient">
+        ///     Instance of HttpClient (Should be used with IHttpClientFactory for optimized performance
+        ///     https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/use-httpclientfactory-to-implement-resilient-http-requests)
+        /// </param> 
+        /// <param name="useHttps">True if using HTTPS (SSL/TLS), False if using HTTP (unencrypted).</param>
+        public MasterloopServerConnection(string hostName, string username, string password, HttpClient httpClient, bool useHttps = true)
+        {
+            _username = username;
+            _password = password;
+            if (useHttps)
+            {
+                _baseAddress = string.Format("https://{0}", hostName);
+            }
+            else
+            {
+                _baseAddress = string.Format("http://{0}", hostName);
+            }
+            Timeout = _defaultTimeout;
+            _localAddress = GetLocalIPAddress();
+            UseCompression = true;
+
+            // Set default metadata to calling application.
+            Assembly calling = Assembly.GetCallingAssembly();
+            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+            Metadata = new ApplicationMetadata()
+            {
+                Application = calling.GetName().Name,
+                Reference = fvi.FileVersion
+            };
+            UseHttpClientInsteadOfWebRequests = true;
+            _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata, httpClient);
         }
 
         /// <summary>
