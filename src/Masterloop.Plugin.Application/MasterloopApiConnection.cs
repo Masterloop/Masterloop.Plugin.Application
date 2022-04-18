@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -8,6 +9,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Masterloop.Core.Types.Base;
 using Masterloop.Core.Types.Commands;
@@ -19,6 +21,7 @@ using Masterloop.Core.Types.Observations;
 using Masterloop.Core.Types.Pulse;
 using Masterloop.Core.Types.Settings;
 using Newtonsoft.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Masterloop.Plugin.Application
 {
@@ -35,6 +38,7 @@ namespace Masterloop.Plugin.Application
         private const string ServerConnectivityResponse = "PONG";
 
         private readonly HttpClient _httpClient;
+        private readonly JsonSerializerOptions _jsonSerializerOptions;
         private readonly MasterloopApiUrlHelper _urlHelper;
 
         /// <summary>
@@ -43,20 +47,25 @@ namespace Masterloop.Plugin.Application
         /// <param name="applicationMetadata">Instance of ApplicationMetadata. Information about the client</param>
         /// <param name="httpClient">Instance of HttpClient.</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public MasterloopApiConnection(MasterloopApiOptions masterloopApiOptions, ApplicationMetadata applicationMetadata, HttpClient httpClient)
+        public MasterloopApiConnection(MasterloopApiOptions masterloopApiOptions,
+            ApplicationMetadata applicationMetadata, HttpClient httpClient)
         {
             ApplicationMetadata = applicationMetadata;
-            MasterloopApiOptions = masterloopApiOptions ?? throw new ArgumentNullException(nameof(masterloopApiOptions));
+            MasterloopApiOptions =
+                masterloopApiOptions ?? throw new ArgumentNullException(nameof(masterloopApiOptions));
 
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _jsonSerializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _urlHelper = new MasterloopApiUrlHelper(masterloopApiOptions.Host, masterloopApiOptions.UseHttps);
 
             // Set authorization headers
-            if (!string.IsNullOrEmpty(masterloopApiOptions.Username) && !string.IsNullOrEmpty(masterloopApiOptions.Password))
+            if (!string.IsNullOrEmpty(masterloopApiOptions.Username) &&
+                !string.IsNullOrEmpty(masterloopApiOptions.Password))
             {
                 //request.Credentials = new NetworkCredential(this.Username, this.Password);
                 var authInfo = $"{masterloopApiOptions.Username}:{masterloopApiOptions.Password}";
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Base64Encode(authInfo));
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Basic", Base64Encode(authInfo));
             }
 
             // Set application metadata headers
@@ -72,6 +81,7 @@ namespace Masterloop.Plugin.Application
                     Reference = fileVersionInfo.FileVersion
                 };
             }
+
             if (!string.IsNullOrEmpty(OriginAddress))
                 _httpClient.DefaultRequestHeaders.Add(OriginAddressHeader, OriginAddress);
             if (!string.IsNullOrEmpty(applicationMetadata.Application))
@@ -295,11 +305,7 @@ namespace Masterloop.Plugin.Application
         public async Task<Observation> GetCurrentObservationAsync(string MID, int observationId, DataType dataType)
         {
             // TODO: Check return type with 404 Not Found
-            var serializedObservation =
-                await DownloadContentAsString(_urlHelper.DeviceObservationCurrentUrl(MID, observationId));
-            if (string.IsNullOrEmpty(serializedObservation))
-                return null;
-            return MasterloopObservationHelper.DeserializeObservation(serializedObservation, dataType);
+            return await GetDeserializedObservationAsync(_urlHelper.DeviceObservationCurrentUrl(MID, observationId), dataType);
         }
 
         /// <summary>
@@ -310,10 +316,7 @@ namespace Masterloop.Plugin.Application
         public async Task<IdentifiedObservation[]> GetCurrentObservationsAsync(string MID)
         {
             // TODO: 1. Check return type with 404 Not Found. 2. Return empty array?
-            var serializedObservations = await DownloadContentAsString(_urlHelper.DeviceObservationsCurrentUrl(MID));
-            if (string.IsNullOrEmpty(serializedObservations))
-                return null;
-            return MasterloopObservationHelper.DeserializeIdentifiedObservations(serializedObservations);
+            return await GetIdentifiedObservationsAsync(_urlHelper.DeviceObservationsCurrentUrl(MID));
         }
 
         /// <summary>
@@ -330,11 +333,7 @@ namespace Masterloop.Plugin.Application
             DateTime to)
         {
             // TODO: 1. Check return type with 404 Not Found. 2. Return empty array?
-            var serializedObservations =
-                await DownloadContentAsString(_urlHelper.DeviceObservationsUrl(MID, observationId, from, to));
-            if (string.IsNullOrEmpty(serializedObservations))
-                return null;
-            return MasterloopObservationHelper.DeserializeObservations(serializedObservations, dataType);
+            return await GetDeserializedObservationsAsync(_urlHelper.DeviceObservationsUrl(MID, observationId, from, to), dataType);
         }
 
         /// <summary>
@@ -591,10 +590,60 @@ namespace Masterloop.Plugin.Application
 
         private async Task<TOutput> GetDeserializedAsync<TOutput>(string url)
         {
-            var responseBody = await DownloadContentAsString(url);
-            if (!string.IsNullOrEmpty(responseBody))
-                return JsonConvert.DeserializeObject<TOutput>(responseBody);
-            return default;
+            return await DownloadContentAs<TOutput>(url);
+        }
+
+        private async Task<IdentifiedObservation[]> GetIdentifiedObservationsAsync(string url)
+        {
+            var expandedObservations = await GetDeserializedAsync<ExpandedObservationValue[]>(url);
+            return expandedObservations?.Select(observation => new IdentifiedObservation
+            {
+                ObservationId = observation.Id,
+                Observation = ObservationStringConverter.StringToObservation(observation.Timestamp,
+                    observation.Value, observation.DataType)
+            }).ToArray();
+        }
+
+        private async Task<Observation> GetDeserializedObservationAsync(string url, DataType dataType)
+        {
+            switch (dataType)
+            {
+                case DataType.Boolean:
+                    return await GetDeserializedAsync<BooleanObservation>(url);
+                case DataType.Double:
+                    return await GetDeserializedAsync<DoubleObservation>(url);
+                case DataType.Integer:
+                    return await GetDeserializedAsync<IntegerObservation>(url);
+                case DataType.Position:
+                    return await GetDeserializedAsync<PositionObservation>(url);
+                case DataType.String:
+                    return await GetDeserializedAsync<StringObservation>(url);
+                case DataType.Statistics:
+                    return await GetDeserializedAsync<StatisticsObservation>(url);
+                default:
+                    throw new NotSupportedException($"Unsupported data type: {dataType}");
+            }
+        }
+
+        private async Task<Observation[]> GetDeserializedObservationsAsync(string url, DataType dataType)
+        {
+            switch (dataType)
+            {
+                case DataType.Boolean:
+                    return await GetDeserializedAsync<BooleanObservation[]>(url);
+                case DataType.Double:
+                    return await GetDeserializedAsync<DoubleObservation[]>(url);
+                case DataType.Integer:
+                    return await GetDeserializedAsync<IntegerObservation[]>(url);
+                case DataType.Position:
+                    return await GetDeserializedAsync<PositionObservation[]>(url);
+                case DataType.String:
+                    return await GetDeserializedAsync<StringObservation[]>(url);
+                case DataType.Statistics:
+                    return await GetDeserializedAsync<StatisticsObservation[]>(url);
+                default:
+                    throw new NotSupportedException($"Unsupported data type: {dataType}");
+            }
         }
 
         private async Task<bool> PostSerializedAsync<TInput>(string url, TInput data)
@@ -625,6 +674,16 @@ namespace Masterloop.Plugin.Application
             if (!string.IsNullOrEmpty(responseBody))
                 return JsonConvert.DeserializeObject<TOutput>(responseBody);
             return default;
+        }
+
+        private async Task<TOutput> DownloadContentAs<TOutput>(string url)
+        {
+            using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+            {
+                response.EnsureSuccessStatusCode();
+                var stream = await response.Content.ReadAsStreamAsync();
+                return await JsonSerializer.DeserializeAsync<TOutput>(stream, _jsonSerializerOptions);
+            }
         }
 
         private async Task<string> DownloadContentAsString(string url)

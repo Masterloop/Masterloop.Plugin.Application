@@ -2,9 +2,9 @@
 
 namespace Masterloop.Plugin.Application
 {
-    internal class HttpByteResponse
+    internal class HttpTypeResponse<T> where T : class
     {
-        public HttpByteResponse(HttpStatusCode statusCode, string statusDescription, byte[] content)
+        public HttpTypeResponse(HttpStatusCode statusCode, string statusDescription, T content)
         {
             Content = content;
             StatusCode = statusCode;
@@ -13,6 +13,6 @@ namespace Masterloop.Plugin.Application
 
         public HttpStatusCode StatusCode { get; }
         public string StatusDescription { get; }
-        public byte[] Content { get; }
+        public T Content { get; }
     }
 }

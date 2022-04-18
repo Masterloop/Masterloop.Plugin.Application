@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Masterloop.Plugin.Application
 {
-    public class ExtendedHttpClient
+    internal class ExtendedHttpClient
     {
         private const int DefaultTimeoutInSeconds = 30;
         private const string OriginAddressHeader = "OriginAddress";

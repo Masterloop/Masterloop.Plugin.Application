@@ -8,30 +8,6 @@ namespace Masterloop.Plugin.Application
 {
     internal class MasterloopObservationHelper
     {
-        public static Observation DeserializeObservation(string json, DataType dataType)
-        {
-            if (!string.IsNullOrEmpty(json))
-                switch (dataType)
-                {
-                    case DataType.Boolean:
-                        return JsonConvert.DeserializeObject<BooleanObservation>(json);
-                    case DataType.Double:
-                        return JsonConvert.DeserializeObject<DoubleObservation>(json);
-                    case DataType.Integer:
-                        return JsonConvert.DeserializeObject<IntegerObservation>(json);
-                    case DataType.Position:
-                        return JsonConvert.DeserializeObject<PositionObservation>(json);
-                    case DataType.String:
-                        return JsonConvert.DeserializeObject<StringObservation>(json);
-                    case DataType.Statistics:
-                        return JsonConvert.DeserializeObject<StatisticsObservation>(json);
-                    default:
-                        throw new NotSupportedException($"Unsupported data type: {dataType.ToString()}");
-                }
-
-            return null;
-        }
-
         public static IdentifiedObservation[] DeserializeIdentifiedObservations(string json)
         {
             if (!string.IsNullOrEmpty(json) && json.Length > 0)
@@ -55,30 +31,6 @@ namespace Masterloop.Plugin.Application
                     return identifiedObservations.ToArray();
                 }
             }
-
-            return null;
-        }
-
-        public static Observation[] DeserializeObservations(string json, DataType dataType)
-        {
-            if (!string.IsNullOrEmpty(json))
-                switch (dataType)
-                {
-                    case DataType.Boolean:
-                        return JsonConvert.DeserializeObject<BooleanObservation[]>(json);
-                    case DataType.Double:
-                        return JsonConvert.DeserializeObject<DoubleObservation[]>(json);
-                    case DataType.Integer:
-                        return JsonConvert.DeserializeObject<IntegerObservation[]>(json);
-                    case DataType.Position:
-                        return JsonConvert.DeserializeObject<PositionObservation[]>(json);
-                    case DataType.String:
-                        return JsonConvert.DeserializeObject<StringObservation[]>(json);
-                    case DataType.Statistics:
-                        return JsonConvert.DeserializeObject<StatisticsObservation[]>(json);
-                    default:
-                        throw new NotSupportedException($"Unsupported data type: {dataType.ToString()}");
-                }
 
             return null;
         }
