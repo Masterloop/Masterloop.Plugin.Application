@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using Masterloop.Core.Types.LiveConnect;
 using Microsoft.Extensions.Configuration;
 
@@ -17,10 +18,17 @@ namespace Masterloop.Plugin.Application.Tests
             return _config;
         }
 
-        protected static IMasterloopServerConnection GetMCSAPI()
+        protected static IMasterloopServerConnection GetMCSAPI(bool useHttpClient = true)
         {
             IConfiguration config = GetConfig();
-            return new MasterloopServerConnection(config["Hostname"], config["Username"], config["Password"], Boolean.Parse(config["UseHTTPS"]));
+            if (useHttpClient)
+            {
+                return new MasterloopServerConnection(config["Hostname"], config["Username"], config["Password"], new HttpClient(), Boolean.Parse(config["UseHTTPS"]));
+            }
+            else
+            {
+                return new MasterloopServerConnection(config["Hostname"], config["Username"], config["Password"], Boolean.Parse(config["UseHTTPS"]));
+            }
         }
 
         protected static MasterloopLiveConnection GetMCSLiveTemporary()
