@@ -614,6 +614,7 @@ namespace Masterloop.Plugin.Application
         #endregion
 
         #region Observations
+
         /// <summary>
         /// Get the latest observation value for specified device and observation identifier.
         /// </summary>
@@ -624,12 +625,7 @@ namespace Masterloop.Plugin.Application
         public Observation GetCurrentObservation(string MID, int observationId, DataType dataType)
         {
             string url = string.Format(_addressDeviceObservationCurrent, MID, observationId);
-            Tuple<bool, string> result = GetString(url);
-            if (result.Item1)
-            {
-                return DeserializeObservation(result.Item2, dataType);
-            }
-            return null;
+            return GetObservation(url, dataType);
         }
 
         /// <summary>
@@ -642,12 +638,7 @@ namespace Masterloop.Plugin.Application
         public async Task<Observation> GetCurrentObservationAsync(string MID, int observationId, DataType dataType)
         {
             string url = string.Format(_addressDeviceObservationCurrent, MID, observationId);
-            Tuple<bool, string> result = await GetStringAsync(url);
-            if (result.Item1)
-            {
-                return DeserializeObservation(result.Item2, dataType);
-            }
-            return null;
+            return await GetObservationAsync(url, dataType);
         }
 
         /// <summary>
@@ -658,12 +649,7 @@ namespace Masterloop.Plugin.Application
         public IdentifiedObservation[] GetCurrentObservations(string MID)
         {
             string url = string.Format(_addressDeviceObservationsCurrent, MID);
-            Tuple<bool, string> result = GetString(url);
-            if (result.Item1)
-            {
-                return DeserializeIdentifiedObservations(result.Item2);
-            }
-            return null;
+            return GetIdentifiedObservations(url);
         }
 
         /// <summary>
@@ -674,12 +660,7 @@ namespace Masterloop.Plugin.Application
         public async Task<IdentifiedObservation[]> GetCurrentObservationsAsync(string MID)
         {
             string url = string.Format(_addressDeviceObservationsCurrent, MID);
-            Tuple<bool, string> result = await GetStringAsync(url);
-            if (result.Item1)
-            {
-                return DeserializeIdentifiedObservations(result.Item2);
-            }
-            return null;
+            return await GetIdentifiedObservationsAsync(url);
         }
 
         /// <summary>
@@ -694,12 +675,7 @@ namespace Masterloop.Plugin.Application
         public Observation[] GetObservations(string MID, int observationId, DataType dataType, DateTime from, DateTime to)
         {
             string url = string.Format(_addressDeviceObservations, MID, observationId, from.ToString("o"), to.ToString("o"));
-            Tuple<bool, string> result = GetString(url);
-            if (result.Item1)
-            {
-                return DeserializeObservations(result.Item2, dataType);
-            }
-            return null;
+            return GetObservations(url, dataType);
         }
 
         /// <summary>
@@ -714,12 +690,7 @@ namespace Masterloop.Plugin.Application
         public async Task<Observation[]> GetObservationsAsync(string MID, int observationId, DataType dataType, DateTime from, DateTime to)
         {
             string url = string.Format(_addressDeviceObservations, MID, observationId, from.ToString("o"), to.ToString("o"));
-            Tuple<bool, string> result = await GetStringAsync(url);
-            if (result.Item1)
-            {
-                return DeserializeObservations(result.Item2, dataType);
-            }
-            return null;
+            return await GetObservationsAsync(url, dataType);
         }
 
         /// <summary>
@@ -769,6 +740,7 @@ namespace Masterloop.Plugin.Application
             }
             return 0;
         }
+
         #endregion
 
         #region Commands
@@ -1150,7 +1122,6 @@ namespace Masterloop.Plugin.Application
             return result.Item1;
         }
 
-
         #endregion
 
         #region Pulse
@@ -1245,6 +1216,7 @@ namespace Masterloop.Plugin.Application
         #endregion
 
         #region InternalMethods
+
         private Observation DeserializeObservation(string json, DataType dataType)
         {
             if (json != string.Empty)
@@ -1275,20 +1247,26 @@ namespace Masterloop.Plugin.Application
             if (json != string.Empty && json.Length > 0)
             {
                 ExpandedObservationValue[] values = JsonConvert.DeserializeObject<ExpandedObservationValue[]>(json);
-                if (values != null && values.Length > 0)
+                return ConvertToIdentifiedObservations(values);
+            }
+            return null;
+        }
+
+        private IdentifiedObservation[] ConvertToIdentifiedObservations(ExpandedObservationValue[] expandedObservationValues)
+        {
+            if (expandedObservationValues != null && expandedObservationValues.Length > 0)
+            {
+                var ios = new List<IdentifiedObservation>();
+                foreach (ExpandedObservationValue v in expandedObservationValues)
                 {
-                    List<IdentifiedObservation> ios = new List<IdentifiedObservation>();
-                    foreach (ExpandedObservationValue v in values)
+                    var io = new IdentifiedObservation()
                     {
-                        IdentifiedObservation io = new IdentifiedObservation()
-                        {
-                            ObservationId = v.Id,
-                            Observation = ObservationStringConverter.StringToObservation(v.Timestamp, v.Value, v.DataType)
-                        };
-                        ios.Add(io);
-                    }
-                    return ios.ToArray();
+                        ObservationId = v.Id,
+                        Observation = ObservationStringConverter.StringToObservation(v.Timestamp, v.Value, v.DataType)
+                    };
+                    ios.Add(io);
                 }
+                return ios.ToArray();
             }
             return null;
         }
@@ -1316,30 +1294,6 @@ namespace Masterloop.Plugin.Application
                 }
             }
             return null;
-        }
-
-        private Tuple<bool, string> GetString(string addressExtension, string accept = DefaultAcceptHeader)
-        {
-            if (UseHttpClientInsteadOfWebRequests)
-            {
-                return GetStringUsingHttpClientAsync(addressExtension, accept).Result;
-            }
-            else
-            {
-                return GetStringUsingWebRequest(addressExtension, accept);
-            }
-        }
-
-        private async Task<Tuple<bool, string>> GetStringAsync(string addressExtension, string accept = DefaultAcceptHeader)
-        {
-            if (UseHttpClientInsteadOfWebRequests)
-            {
-                return await GetStringUsingHttpClientAsync(addressExtension, accept);
-            }
-            else
-            {
-                return await GetStringUsingWebRequestAsync(addressExtension, accept);
-            }
         }
 
         private Tuple<bool, byte[]> GetBytes(string addressExtension, string accept = DefaultAcceptHeader)
@@ -1416,7 +1370,33 @@ namespace Masterloop.Plugin.Application
 
         #region Http methods using WebRequests
 
-        private Tuple<bool, string> GetStringUsingWebRequest(string addressExtension, string accept)
+        private T GetDeserializedUsingWebRequest<T>(string url, string accept = DefaultAcceptHeader)
+        {
+            Tuple<bool, string> result = GetStringUsingWebRequest(url, accept);
+            if (result.Item1)
+            {
+                if (result.Item2 != string.Empty)
+                {
+                    return JsonConvert.DeserializeObject<T>(result.Item2);
+                }
+            }
+            return default(T);
+        }
+
+        private async Task<T> GetDeserializedUsingWebRequestAsync<T>(string url, string accept = DefaultAcceptHeader)
+        {
+            Tuple<bool, string> result = await GetStringUsingWebRequestAsync(url, accept);
+            if (result.Item1)
+            {
+                if (result.Item2 != string.Empty)
+                {
+                    return JsonConvert.DeserializeObject<T>(result.Item2);
+                }
+            }
+            return default(T);
+        }
+
+        private Tuple<bool, string> GetStringUsingWebRequest(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var result = GetBytes(addressExtension, accept);
             if (result.Item1 && result.Item2 != null)
@@ -1429,7 +1409,7 @@ namespace Masterloop.Plugin.Application
             }
         }
 
-        private async Task<Tuple<bool, string>> GetStringUsingWebRequestAsync(string addressExtension, string accept)
+        private async Task<Tuple<bool, string>> GetStringUsingWebRequestAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var result = await GetBytesAsync(addressExtension, accept);
             if (result.Item1 && result.Item2 != null)
@@ -1728,35 +1708,73 @@ namespace Masterloop.Plugin.Application
 
         #region Http methods using HttpClient
 
-        private async Task<Tuple<bool, string>> GetStringUsingHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
+        private async Task<TResult> GetDeserializedUsingHttpClientAsync<TResult>(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var url = _baseAddress + addressExtension;
-            var success = false;
-            string result = null;
             try
             {
-                var response = await _extendedHttpClient.DownloadStringAsync(url, accept);
-                result = response.Content;
+                var response = await _extendedHttpClient.DownloadAsync<TResult>(url, accept);
                 LastHttpStatusCode = response.StatusCode;
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     LastErrorMessage = string.Empty;
-                    success = true;
+                    return response.Content;
                 }
-                else
-                {
-                    LastErrorMessage = response.StatusDescription;
-                }
+
+                LastErrorMessage = response.StatusDescription;
             }
             catch (Exception e)
             {
                 LastHttpStatusCode = _extendedHttpClient.StatusCode;
                 LastErrorMessage = e.Message;
             }
-            return new Tuple<bool, string>(success, result);
+
+            return default(TResult);
         }
 
+        private async Task<Observation> GetObservationUsingHttpClientAsync(string addressExtension, DataType observationDataType, string accept = DefaultAcceptHeader)
+        {
+            switch (observationDataType)
+            {
+                case DataType.Boolean:
+                    return await GetDeserializedUsingHttpClientAsync<BooleanObservation>(addressExtension, accept);
+                case DataType.Double:
+                    return await GetDeserializedUsingHttpClientAsync<DoubleObservation>(addressExtension, accept);
+                case DataType.Integer:
+                    return await GetDeserializedUsingHttpClientAsync<IntegerObservation>(addressExtension, accept);
+                case DataType.Position:
+                    return await GetDeserializedUsingHttpClientAsync<PositionObservation>(addressExtension, accept);
+                case DataType.String:
+                    return await GetDeserializedUsingHttpClientAsync<StringObservation>(addressExtension, accept);
+                case DataType.Statistics:
+                    return await GetDeserializedUsingHttpClientAsync<StatisticsObservation>(addressExtension, accept);
+                default:
+                    throw new NotSupportedException("Unsupported data type: " + observationDataType.ToString());
+            }
+        }
+
+        private async Task<Observation[]> GetObservationsUsingHttpClientAsync(string addressExtension, DataType observationDataType, string accept = DefaultAcceptHeader)
+        {
+            switch (observationDataType)
+            {
+                case DataType.Boolean:
+                    return await GetDeserializedUsingHttpClientAsync<BooleanObservation[]>(addressExtension, accept);
+                case DataType.Double:
+                    return await GetDeserializedUsingHttpClientAsync<DoubleObservation[]>(addressExtension, accept);
+                case DataType.Integer:
+                    return await GetDeserializedUsingHttpClientAsync<IntegerObservation[]>(addressExtension, accept);
+                case DataType.Position:
+                    return await GetDeserializedUsingHttpClientAsync<PositionObservation[]>(addressExtension, accept);
+                case DataType.String:
+                    return await GetDeserializedUsingHttpClientAsync<StringObservation[]>(addressExtension, accept);
+                case DataType.Statistics:
+                    return await GetDeserializedUsingHttpClientAsync<StatisticsObservation[]>(addressExtension, accept);
+                default:
+                    throw new NotSupportedException("Unsupported data type: " + observationDataType.ToString());
+            }
+        }
+        
         private async Task<Tuple<bool, byte[]>> GetBytesUsingHttpClientAsync(string addressExtension, string accept = DefaultAcceptHeader)
         {
             var url = _baseAddress + addressExtension;
@@ -1784,6 +1802,31 @@ namespace Masterloop.Plugin.Application
                 LastErrorMessage = e.Message;
             }
             return new Tuple<bool, byte[]>(success, result);
+        }
+
+        private async Task<TResult> PostUsingHttpClientAsync<TResult>(string addressExtension, string body, string accept = DefaultAcceptHeader, string contentType = DefaultContentType)
+        {
+            var url = _baseAddress + addressExtension;
+            try
+            {
+                var response = await _extendedHttpClient.UploadAsync<TResult>(url, body, accept, contentType);
+                LastHttpStatusCode = response.StatusCode;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    LastErrorMessage = string.Empty;
+                    return response.Content;
+                }
+
+                LastErrorMessage = response.StatusDescription;
+            }
+            catch (Exception e)
+            {
+                LastHttpStatusCode = _extendedHttpClient.StatusCode;
+                LastErrorMessage = e.Message;
+            }
+
+            return default(TResult);
         }
 
         private async Task<Tuple<bool, string>> PostUsingHttpClientAsync(string addressExtension, string body, string accept = DefaultAcceptHeader, string contentType = DefaultContentType)
@@ -1845,57 +1888,173 @@ namespace Masterloop.Plugin.Application
         }
 
         #endregion
-
+        
         private T GetDeserialized<T>(string url)
         {
-            Tuple<bool, string> result = GetString(url);
-            if (result.Item1)
+            if (UseHttpClientInsteadOfWebRequests)
             {
-                if (result.Item2 != string.Empty)
-                {
-                    return JsonConvert.DeserializeObject<T>(result.Item2);
-                }
+                return GetDeserializedUsingHttpClientAsync<T>(url).Result;
             }
-            return default(T);
+            else
+            {
+                return GetDeserializedUsingWebRequest<T>(url);
+            }
         }
 
         private async Task<T> GetDeserializedAsync<T>(string url)
         {
-            Tuple<bool, string> result = await GetStringAsync(url);
-            if (result.Item1)
+            if (UseHttpClientInsteadOfWebRequests)
             {
-                if (result.Item2 != string.Empty)
-                {
-                    return JsonConvert.DeserializeObject<T>(result.Item2);
-                }
+                return await GetDeserializedUsingHttpClientAsync<T>(url);
             }
-            return default(T);
+            else
+            {
+                return await GetDeserializedUsingWebRequestAsync<T>(url);
+            }
+        }
+
+        private Observation GetObservation(string url, DataType dataType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return GetObservationUsingHttpClientAsync(url, dataType).Result;
+            }
+            else
+            {
+                Tuple<bool, string> result = GetStringUsingWebRequest(url);
+                if (result.Item1)
+                {
+                    return DeserializeObservation(result.Item2, dataType);
+                }
+                return null;
+            }
+        }
+
+        private async Task<Observation> GetObservationAsync(string url, DataType dataType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return await GetObservationUsingHttpClientAsync(url, dataType);
+            }
+            else
+            {
+                Tuple<bool, string> result = await GetStringUsingWebRequestAsync(url);
+                if (result.Item1)
+                {
+                    return DeserializeObservation(result.Item2, dataType);
+                }
+                return null;
+            }
+        }
+
+        private Observation[] GetObservations(string url, DataType dataType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return GetObservationsUsingHttpClientAsync(url, dataType).Result;
+            }
+            else
+            {
+                Tuple<bool, string> result = GetStringUsingWebRequest(url);
+                if (result.Item1)
+                {
+                    return DeserializeObservations(result.Item2, dataType);
+                }
+                return null;
+            }
+        }
+
+        private async Task<Observation[]> GetObservationsAsync(string url, DataType dataType)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                return await GetObservationsUsingHttpClientAsync(url, dataType);
+            }
+            else
+            {
+                Tuple<bool, string> result = await GetStringUsingWebRequestAsync(url);
+                if (result.Item1)
+                {
+                    return DeserializeObservations(result.Item2, dataType);
+                }
+                return null;
+            }
+        }
+
+        private IdentifiedObservation[] GetIdentifiedObservations(string url)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                var expandedObservationValues = GetDeserializedUsingHttpClientAsync<ExpandedObservationValue[]>(url).Result;
+                return ConvertToIdentifiedObservations(expandedObservationValues);
+            }
+            else
+            {
+                Tuple<bool, string> result = GetStringUsingWebRequest(url);
+                if (result.Item1)
+                {
+                    return DeserializeIdentifiedObservations(result.Item2);
+                }
+                return null;
+            }
+        }
+
+        private async Task<IdentifiedObservation[]> GetIdentifiedObservationsAsync(string url)
+        {
+            if (UseHttpClientInsteadOfWebRequests)
+            {
+                var expandedObservationValues = await GetDeserializedUsingHttpClientAsync<ExpandedObservationValue[]>(url);
+                return ConvertToIdentifiedObservations(expandedObservationValues);
+            }
+            else
+            {
+                Tuple<bool, string> result = await GetStringUsingWebRequestAsync(url);
+                if (result.Item1)
+                {
+                    return DeserializeIdentifiedObservations(result.Item2);
+                }
+                return null;
+            }
         }
 
         private T PostDeserialized<T>(string url, string body, string contentType = DefaultContentType)
         {
-            Tuple<bool, string> result = Post(url, body, contentType);
-            if (result.Item1)
+            if (UseHttpClientInsteadOfWebRequests)
             {
-                if (result.Item2 != string.Empty)
-                {
-                    return JsonConvert.DeserializeObject<T>(result.Item2);
-                }
+                return PostUsingHttpClientAsync<T>(url, body, contentType: contentType).Result;
             }
-            return default(T);
+            else
+            {
+                Tuple<bool, string> result = Post(url, body, contentType);
+                if (result.Item1)
+                {
+                    if (result.Item2 != string.Empty)
+                    {
+                        return JsonConvert.DeserializeObject<T>(result.Item2);
+                    }
+                }
+                return default(T);
+            }
         }
 
         private async Task<T> PostDeserializedAsync<T>(string url, string body, string contentType = DefaultContentType)
         {
-            Tuple<bool, string> result = await PostAsync(url, body, contentType);
-            if (result.Item1)
+            if (UseHttpClientInsteadOfWebRequests)
             {
-                if (result.Item2 != string.Empty)
-                {
-                    return JsonConvert.DeserializeObject<T>(result.Item2);
-                }
+                return await PostUsingHttpClientAsync<T>(url, body, contentType: contentType);
             }
-            return default(T);
+            else
+            {
+                Tuple<bool, string> result = await PostAsync(url, body, contentType);
+                if (result.Item1)
+                {
+                    if (result.Item2 != string.Empty)
+                    {
+                        return JsonConvert.DeserializeObject<T>(result.Item2);
+                    }
+                }
+                return default(T);
+            }
         }
 
         private string GetLocalIPAddress()
@@ -1921,6 +2080,7 @@ namespace Masterloop.Plugin.Application
             }
             return null;
         }
+
         #endregion
     }
 }

@@ -3,11 +3,12 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Masterloop.Plugin.Application
 {
-    public class ExtendedHttpClient
+    internal class ExtendedHttpClient
     {
         private const int DefaultTimeoutInSeconds = 30;
         private const string OriginAddressHeader = "OriginAddress";
@@ -15,6 +16,9 @@ namespace Masterloop.Plugin.Application
         private const string OriginReferenceHeader = "OriginReference";
 
         private readonly HttpClient _httpClient;
+
+        private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions
+            { PropertyNameCaseInsensitive = true };
 
         public ExtendedHttpClient(string username, string password, bool useCompression, string originAddress, ApplicationMetadata applicationMetadata, HttpClient httpClient)
         {
@@ -76,6 +80,30 @@ namespace Masterloop.Plugin.Application
                 _httpClient.DefaultRequestHeaders.Add(OriginReferenceHeader, applicationMetadata.Reference);
         }
 
+        public async Task<HttpTypeResponse<TResult>> DownloadAsync<TResult>(string url, string accept)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+
+            using (var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+            {
+                if (response == null)
+                    return null;
+
+                StatusCode = response.StatusCode;
+                StatusDescription = response.ReasonPhrase;
+
+                var stream = await response.Content.ReadAsStreamAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return new HttpTypeResponse<TResult>(response.StatusCode, response.ReasonPhrase, await JsonSerializer.DeserializeAsync<TResult>(stream, JsonSerializerOptions));
+                }
+
+                return new HttpTypeResponse<TResult>(response.StatusCode, response.ReasonPhrase);
+            }
+        }
+
         public async Task<HttpStringResponse> DownloadStringAsync(string url, string accept)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -108,8 +136,34 @@ namespace Masterloop.Plugin.Application
                 response.IsSuccessStatusCode ? await response.Content?.ReadAsByteArrayAsync() : null);
         }
 
-        public async Task<HttpStringResponse> UploadStringAsync(string url, string body, string accept,
-            string contentType)
+        public async Task<HttpTypeResponse<TResult>> UploadAsync<TResult>(string url, string body, string accept, string contentType)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(body, Encoding.UTF8, contentType)
+            };
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+
+            using (var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+            {
+                if (response == null)
+                    return null;
+
+                StatusCode = response.StatusCode;
+                StatusDescription = response.ReasonPhrase;
+
+                var stream = await response.Content.ReadAsStreamAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return new HttpTypeResponse<TResult>(response.StatusCode, response.ReasonPhrase, await JsonSerializer.DeserializeAsync<TResult>(stream, JsonSerializerOptions));
+                }
+
+                return new HttpTypeResponse<TResult>(response.StatusCode, response.ReasonPhrase);
+            }
+        }
+
+        public async Task<HttpStringResponse> UploadStringAsync(string url, string body, string accept, string contentType)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url)
             {

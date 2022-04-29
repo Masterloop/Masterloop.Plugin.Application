@@ -2,7 +2,7 @@
 
 namespace Masterloop.Plugin.Application
 {
-    public class HttpByteResponse
+    internal class HttpByteResponse
     {
         public HttpByteResponse(HttpStatusCode statusCode, string statusDescription, byte[] content)
         {
