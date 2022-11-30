@@ -16,8 +16,7 @@ namespace Masterloop.Plugin.Application
 
         private readonly HttpClient _httpClient;
 
-        public ExtendedHttpClient(string username, string password, bool useCompression, string originAddress,
-            ApplicationMetadata applicationMetadata)
+        public ExtendedHttpClient(string username, string password, bool useCompression, string originAddress, ApplicationMetadata applicationMetadata, HttpClient httpClient)
         {
             Username = username;
             Password = password;
@@ -27,12 +26,7 @@ namespace Masterloop.Plugin.Application
             StatusCode = HttpStatusCode.Unused;
             StatusDescription = string.Empty;
 
-            var httpClientHandler = new HttpClientHandler
-            {
-                AutomaticDecompression = useCompression ? DecompressionMethods.GZip : DecompressionMethods.None
-            };
-
-            _httpClient = new HttpClient(httpClientHandler);
+            _httpClient = httpClient;
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
             {
                 //request.Credentials = new NetworkCredential(this.Username, this.Password);
