@@ -1,26 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <Company>Masterloop</Company>
     <Product>Masterloop Application Plugin</Product>
     <AssemblyVersion>6.0.1.0</AssemblyVersion>
-    <Version>6.0.1</Version>
+    <Version>6.5.2</Version>
     <AssemblyName>Masterloop.Plugin.Application</AssemblyName>
     <RootNamespace>Masterloop.Plugin.Application</RootNamespace>
     <Authors>Masterloop</Authors>
     <PackageTags>IoT Masterloop Application Plugin</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Copyright>Copyright (c) 2013 Masterloop</Copyright>
-    <PackageReleaseNotes>Added support for HttpClient transport library for MasterloopServerConnection HTTP REST API client.</PackageReleaseNotes>
+    <PackageReleaseNotes>Retargeted to .NET Standard 2.1.</PackageReleaseNotes>
     <Description>Plugin to connect .NET based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
-    <FileVersion>6.0.1.0</FileVersion>
+    <FileVersion>6.5.2.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>6.5.0-rc</PackageVersion>
+    <PackageVersion>6.5.2</PackageVersion>
     <Owners>jhskailand</Owners>
     <Summary>Plugin to connect .NET based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <ReleaseVersion>6.5.0-rc</ReleaseVersion>
     <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
     <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
     <Configurations>Release;Debug</Configurations>
@@ -29,8 +30,8 @@
     <DebugType></DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="RabbitMQ.Client" Version="6.2.2" />
-    <PackageReference Include="Masterloop.Core.Types" Version="6.4.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
+    <PackageReference Include="Masterloop.Core.Types" Version="6.5.6" />
   </ItemGroup>
 </Project>
