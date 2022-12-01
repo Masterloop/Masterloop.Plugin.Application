@@ -155,7 +155,8 @@ namespace Masterloop.Plugin.Application
         /// <param name="username">Login username.</param>
         /// <param name="password">Login password.</param> 
         /// <param name="useHttps">True if using HTTPS (SSL/TLS), False if using HTTP (unencrypted).</param>
-        public MasterloopServerConnection(string hostName, string username, string password, bool useHttps = true)
+        /// <param name="useMetadata">Flag indicating whether metadata (IP, assembly info etc) shall be extracted from client and sent to cloud.</param>
+        public MasterloopServerConnection(string hostName, string username, string password, bool useHttps = true, bool useMetadata = true)
         {
             _username = username;
             _password = password;
@@ -168,17 +169,20 @@ namespace Masterloop.Plugin.Application
                 _baseAddress = string.Format("http://{0}", hostName);
             }
             Timeout = _defaultTimeout;
-            _localAddress = GetLocalIPAddress();
             UseCompression = true;
 
-            // Set default metadata to calling application.
-            Assembly calling = Assembly.GetCallingAssembly();
-            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
-            Metadata = new ApplicationMetadata()
+            if (useMetadata)
             {
-                Application = calling.GetName().Name,
-                Reference = fvi.FileVersion
-            };
+                // Set default metadata to calling application.
+                _localAddress = GetLocalIPAddress();
+                Assembly calling = Assembly.GetCallingAssembly();
+                System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+                Metadata = new ApplicationMetadata()
+                {
+                    Application = calling.GetName().Name,
+                    Reference = fvi.FileVersion
+                };
+            }
         }
 
         /// <summary>
@@ -192,7 +196,8 @@ namespace Masterloop.Plugin.Application
         ///     https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/use-httpclientfactory-to-implement-resilient-http-requests)
         /// </param> 
         /// <param name="useHttps">True if using HTTPS (SSL/TLS), False if using HTTP (unencrypted).</param>
-        public MasterloopServerConnection(string hostName, string username, string password, HttpClient httpClient, bool useHttps = true)
+        /// <param name="useMetadata">Flag indicating whether metadata (IP, assembly info etc) shall be extracted from client and sent to cloud.</param>
+        public MasterloopServerConnection(string hostName, string username, string password, HttpClient httpClient, bool useHttps = true, bool useMetadata = true)
         {
             _username = username;
             _password = password;
@@ -205,17 +210,20 @@ namespace Masterloop.Plugin.Application
                 _baseAddress = string.Format("http://{0}", hostName);
             }
             Timeout = _defaultTimeout;
-            _localAddress = GetLocalIPAddress();
             UseCompression = true;
 
-            // Set default metadata to calling application.
-            Assembly calling = Assembly.GetCallingAssembly();
-            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
-            Metadata = new ApplicationMetadata()
+            if (useMetadata)
             {
-                Application = calling.GetName().Name,
-                Reference = fvi.FileVersion
-            };
+                // Set default metadata to calling application.
+                _localAddress = GetLocalIPAddress();
+                Assembly calling = Assembly.GetCallingAssembly();
+                System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+                Metadata = new ApplicationMetadata()
+                {
+                    Application = calling.GetName().Name,
+                    Reference = fvi.FileVersion
+                };
+            }
             UseHttpClientInsteadOfWebRequests = true;
             _extendedHttpClient = new ExtendedHttpClient(_username, _password, UseCompression, _localAddress, Metadata, httpClient);
         }

@@ -4,7 +4,7 @@
     <Company>Masterloop</Company>
     <Product>Masterloop Application Plugin</Product>
     <AssemblyVersion>6.0.1.0</AssemblyVersion>
-    <Version>6.5.2</Version>
+    <Version>6.5.3</Version>
     <AssemblyName>Masterloop.Plugin.Application</AssemblyName>
     <RootNamespace>Masterloop.Plugin.Application</RootNamespace>
     <Authors>Masterloop</Authors>
@@ -12,12 +12,12 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Copyright>Copyright (c) 2013 Masterloop</Copyright>
-    <PackageReleaseNotes>Retargeted to .NET Standard 2.1.</PackageReleaseNotes>
+    <PackageReleaseNotes>HTTPClient injection, optional client metadata extraction.</PackageReleaseNotes>
     <Description>Plugin to connect .NET based applications to Masterloop Cloud Services</Description>
     <PackageProjectUrl>https://github.com/Masterloop/Masterloop.Plugin.Application</PackageProjectUrl>
-    <FileVersion>6.5.2.0</FileVersion>
+    <FileVersion>6.5.3.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>6.5.2</PackageVersion>
+    <PackageVersion>6.5.3</PackageVersion>
     <Owners>jhskailand</Owners>
     <Summary>Plugin to connect .NET based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>

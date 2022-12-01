@@ -227,7 +227,8 @@ namespace Masterloop.Plugin.Application
         /// <param name="username">MCS username.</param>
         /// <param name="password">MCSLogin password.</param> 
         /// <param name="useEncryption">True if using encryption, False if not using encryption.</param>
-        public MasterloopLiveConnection(string hostName, string username, string password, bool useEncryption)
+        /// <param name="useMetadata">Flag indicating whether metadata (IP, assembly info etc) shall be extracted from client and sent to cloud.</param>
+        public MasterloopLiveConnection(string hostName, string username, string password, bool useEncryption, bool useMetadata = true)
         {
             _subModelLock = new object();
             _pubModelLock = new object();
@@ -235,24 +236,28 @@ namespace Masterloop.Plugin.Application
             _apiServerConnection = new MasterloopServerConnection(hostName, username, password, useEncryption);
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BufferedDeliverEventArgs>();
-            _localAddress = GetLocalIPAddress();
             _transactionOpen = false;
 
-            // Set default metadata to calling application.
-            Assembly calling = Assembly.GetCallingAssembly();
-            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
-            Metadata = new ApplicationMetadata()
+            if (useMetadata)
             {
-                Application = calling.GetName().Name,
-                Reference = fvi.FileVersion
-            };
+                // Set default metadata to calling application.
+                _localAddress = GetLocalIPAddress();
+                Assembly calling = Assembly.GetCallingAssembly();
+                System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+                Metadata = new ApplicationMetadata()
+                {
+                    Application = calling.GetName().Name,
+                    Reference = fvi.FileVersion
+                };
+            }
         }
 
         /// <summary>
         /// Constructs a new live connection object using live message server credentials.
         /// </summary>
         /// <param name="liveConnectionDetails">Live message server connection details.</param>
-        public MasterloopLiveConnection(LiveConnectionDetails liveConnectionDetails)
+        /// <param name="useMetadata">Flag indicating whether metadata (IP, assembly info etc) shall be extracted from client and sent to cloud.</param>
+        public MasterloopLiveConnection(LiveConnectionDetails liveConnectionDetails, bool useMetadata = true)
         {
             _subModelLock = new object();
             _pubModelLock = new object();
@@ -260,17 +265,20 @@ namespace Masterloop.Plugin.Application
             _liveConnectionDetails = liveConnectionDetails;
             _observationType = new Dictionary<int, DataType>();
             _queue = new ConcurrentQueue<BufferedDeliverEventArgs>();
-            _localAddress = GetLocalIPAddress();
             _transactionOpen = false;
 
-            // Set default metadata to calling application.
-            Assembly calling = Assembly.GetCallingAssembly();
-            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
-            Metadata = new ApplicationMetadata()
+            if (useMetadata)
             {
-                Application = calling.GetName().Name,
-                Reference = fvi.FileVersion
-            };
+                // Set default metadata to calling application.
+                _localAddress = GetLocalIPAddress();
+                Assembly calling = Assembly.GetCallingAssembly();
+                System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(calling.Location);
+                Metadata = new ApplicationMetadata()
+                {
+                    Application = calling.GetName().Name,
+                    Reference = fvi.FileVersion
+                };
+            }
         }
 
         /// <summary>
