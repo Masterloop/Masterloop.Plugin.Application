@@ -41,50 +41,58 @@ namespace Masterloop.Plugin.Application
         public string DownloadString(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "GET");
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                string data = reader.ReadToEnd();
-                return data;
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    string data = reader.ReadToEnd();
+                    return data;
+                }
             }
         }
 
         public async Task<string> DownloadStringAsync(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "GET");
-            HttpWebResponse response = (HttpWebResponse) await request.GetResponseAsync();
-            using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                string data = await reader.ReadToEndAsync();
-                return data;
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    string data = await reader.ReadToEndAsync();
+                    return data;
+                }
             }
         }
 
         public byte[] DownloadBytes(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "GET");
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            using (BinaryReader reader = new BinaryReader(response.GetResponseStream()))
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                return ReadAllBytes(reader);
+                using (BinaryReader reader = new BinaryReader(response.GetResponseStream()))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    return ReadAllBytes(reader);
+                }
             }
         }
 
         public async Task<byte[]> DownloadBytesAsync(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "GET");
-            HttpWebResponse response = (HttpWebResponse) await request.GetResponseAsync();
-            using (BinaryReader reader = new BinaryReader(response.GetResponseStream()))
+            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                return ReadAllBytes(reader);
+                using (BinaryReader reader = new BinaryReader(response.GetResponseStream()))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    return ReadAllBytes(reader);
+                }
             }
         }
 
@@ -97,13 +105,16 @@ namespace Masterloop.Plugin.Application
                 byte[] data = Encoding.UTF8.GetBytes(body);
                 writer.Write(data, 0, data.Length);
             }
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                string data = reader.ReadToEnd();
-                return data;
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    string data = reader.ReadToEnd();
+                    return data;
+                }
             }
         }
 
@@ -116,55 +127,62 @@ namespace Masterloop.Plugin.Application
                 byte[] data = Encoding.UTF8.GetBytes(body);
                 await writer.WriteAsync(data, 0, data.Length);
             }
-            HttpWebResponse response = (HttpWebResponse) await request.GetResponseAsync();
-            using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+
+            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
             {
-                this.StatusCode = response.StatusCode;
-                this.StatusDescription = response.StatusDescription;
-                string data = await reader.ReadToEndAsync();
-                return data;
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    this.StatusCode = response.StatusCode;
+                    this.StatusDescription = response.StatusDescription;
+                    string data = await reader.ReadToEndAsync();
+                    return data;
+                }
             }
         }
 
         public string Delete(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "DELETE");
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            this.StatusCode = response.StatusCode;
-            this.StatusDescription = response.StatusDescription;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            {
+                this.StatusCode = response.StatusCode;
+                this.StatusDescription = response.StatusDescription;
 
-            if (response.ContentLength > 0)
-            {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                if (response.ContentLength > 0)
                 {
-                    string data = reader.ReadToEnd();
-                    return data;
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string data = reader.ReadToEnd();
+                        return data;
+                    }
                 }
-            }
-            else
-            {
-                return null;
+                else
+                {
+                    return null;
+                }
             }
         }
 
         public async Task<string> DeleteAsync(string url)
         {
             HttpWebRequest request = CreateRequestObject(url, "DELETE");
-            HttpWebResponse response = (HttpWebResponse) await request.GetResponseAsync();
-            this.StatusCode = response.StatusCode;
-            this.StatusDescription = response.StatusDescription;
+            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
+            {
+                this.StatusCode = response.StatusCode;
+                this.StatusDescription = response.StatusDescription;
 
-            if (response.ContentLength > 0)
-            {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                if (response.ContentLength > 0)
                 {
-                    string data = await reader.ReadToEndAsync();
-                    return data;
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string data = await reader.ReadToEndAsync();
+                        return data;
+                    }
                 }
-            }
-            else
-            {
-                return null;
+                else
+                {
+                    return null;
+                }
             }
         }
 
