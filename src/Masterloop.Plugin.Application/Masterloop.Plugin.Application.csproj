@@ -22,8 +22,8 @@
     <Summary>Plugin to connect .NET based applications to Masterloop Cloud Services</Summary>
     <Title>Masterloop.Plugin.Application</Title>
     <PackageId>Masterloop.Plugin.Application</PackageId>
-    <PackageIconUrl>http://masterloop.azurewebsites.net/Images/Masterloop_Symbol_Square_32x32.png</PackageIconUrl>
-    <PackageLicenseUrl>http://masterloop.azurewebsites.net/Licenses/masterloop-mit-license.txt</PackageLicenseUrl>
+    <PackageIcon>Masterloop.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Configurations>Release;Debug</Configurations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -33,5 +33,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
     <PackageReference Include="Masterloop.Core.Types" Version="6.5.6" />
+     <None Include="Masterloop.png" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>

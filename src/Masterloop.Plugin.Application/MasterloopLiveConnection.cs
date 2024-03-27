@@ -1224,9 +1224,18 @@ namespace Masterloop.Plugin.Application
             IEnumerable<CommandSubscription<Command>> subscriptions = _commandSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
             if (subscriptions.Any())
             {
+                Command c = null;
+                try
+                {
+                    c = JsonConvert.DeserializeObject<Command>(json);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
                 foreach (CommandSubscription<Command> s in subscriptions)
                 {
-                    s.CommandHandler(MID, JsonConvert.DeserializeObject<Command>(json));                    
+                    s.CommandHandler(MID, c);
                 }
                 return true;
             }
@@ -1241,9 +1250,18 @@ namespace Masterloop.Plugin.Application
             IEnumerable<CommandSubscription<CommandResponse>> subscriptions = _commandResponseSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.CommandId == commandId);
             if (subscriptions.Any())
             {
+                CommandResponse cr = null;
+                try
+                {
+                    cr = JsonConvert.DeserializeObject<CommandResponse>(json);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
                 foreach (CommandSubscription<CommandResponse> s in subscriptions)
                 {
-                    s.CommandHandler(MID, JsonConvert.DeserializeObject<CommandResponse>(json));   
+                    s.CommandHandler(MID, cr);   
                 }
                 return true;
             }
@@ -1258,9 +1276,18 @@ namespace Masterloop.Plugin.Application
             IEnumerable<PulseSubscription> subscriptions = _pulseSubscriptions.Where(s => (s.MID == MID || s.MID == null) && s.PulseId == pulseId);
             if (subscriptions.Any())
             {
+                Pulse p = null;
+                try
+                {
+                    p = JsonConvert.DeserializeObject<Pulse>(json);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
                 foreach (PulseSubscription s in subscriptions)
                 {
-                    s.PulseHandler(MID, pulseId, JsonConvert.DeserializeObject<Pulse>(json));                    
+                    s.PulseHandler(MID, pulseId, p);                    
                 }
                 return true;
             }
@@ -1561,6 +1588,7 @@ namespace Masterloop.Plugin.Application
             handlerCount += _integerSubscriptions.Count(s => observationId == s.ObservationId);
             handlerCount += _positionSubscriptions.Count(s => observationId == s.ObservationId);
             handlerCount += _stringSubscriptions.Count(s => observationId == s.ObservationId);
+            handlerCount += _statisticsSubscriptions.Count(s => observationId == s.ObservationId);
 
             return handlerCount;
         }
